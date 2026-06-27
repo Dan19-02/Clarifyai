@@ -91,6 +91,7 @@ export default function App() {
   const [studyMode, setStudyMode] = useState<StudyMode>("standard");
   const [isGenerating, setIsGenerating] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>("chat");
+  const [deepVerify, setDeepVerify] = useState(false);
 
   // Custom image generator state
   const [imagePrompt, setImagePrompt] = useState("");
@@ -221,7 +222,8 @@ export default function App() {
         board: profile.board,
         grade: profile.grade,
         language: profile.language,
-        preferredAnalogy: profile.preferredAnalogy
+        preferredAnalogy: profile.preferredAnalogy,
+        deepVerify
       });
 
       const modelMsg: ChatMessage = {
@@ -1044,8 +1046,25 @@ export default function App() {
             </div>
           )}
 
+          {/* Deep-verify toggle: a second examiner pass that double-checks accuracy (slower) */}
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => setDeepVerify((v) => !v)}
+              title="Runs a second 'examiner' pass that double-checks facts and calculations. Slower, best for important problems."
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all cursor-pointer ${
+                deepVerify
+                  ? "bg-editorial-sage text-white border-editorial-sage shadow-sm"
+                  : "bg-white text-editorial-charcoal/60 border-editorial-line hover:bg-editorial-stone"
+              }`}
+              id="btn-deepverify"
+            >
+              <CheckCircle2 size={13} />
+              Deep-check {deepVerify ? "On" : "Off"}
+            </button>
+          </div>
+
           {/* User Chat Input panel */}
-          <div className="mt-4 bg-white border border-editorial-line rounded-[28px] md:rounded-[32px] p-2.5 md:p-3 flex items-center gap-2 shadow-sm focus-within:border-editorial-sage focus-within:ring-1 focus-within:ring-editorial-sage/30 transition-all">
+          <div className="mt-2 bg-white border border-editorial-line rounded-[28px] md:rounded-[32px] p-2.5 md:p-3 flex items-center gap-2 shadow-sm focus-within:border-editorial-sage focus-within:ring-1 focus-within:ring-editorial-sage/30 transition-all">
             <input
               type="text"
               value={inputText}
