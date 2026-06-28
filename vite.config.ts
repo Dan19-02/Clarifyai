@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
+const target_url = process.env.BACKEND_URL;
 
 export default defineConfig(() => {
   return {
@@ -16,7 +17,7 @@ export default defineConfig(() => {
       // Forward API + live-voice WebSocket calls to the Express backend.
       proxy: {
         '/api': {
-          target: 'http://localhost:4000',
+          target: target_url,
           changeOrigin: true,
           ws: true,
         },
