@@ -6,6 +6,7 @@
 import type { StudentProfile, ChapterProgress, ChatMessage, Conversation } from "./types";
 
 const TOKEN_KEY = "clarify_token";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -42,7 +43,11 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`/api${path}`, { ...options, headers });
+  // const res = await fetch(`/api${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}/api${path}`, {
+  ...options,
+  headers,
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     // Token rejected → clear it so the app drops back to the login screen.
