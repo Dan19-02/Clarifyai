@@ -5,6 +5,14 @@ export interface GroundingSource {
   uri: string;
 }
 
+/** A file a student attaches to a message (image or document). */
+export interface Attachment {
+  dataUrl: string; // full data URL, e.g. "data:image/png;base64,..." — used for display + upload
+  mimeType: string;
+  name: string;
+  isImage: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "model";
@@ -12,8 +20,17 @@ export interface ChatMessage {
   timestamp: string;
   mode?: StudyMode;
   sources?: GroundingSource[];
+  attachments?: Attachment[];
   audioBase64?: string; // Cache generated TTS audio
   isPlayingAudio?: boolean;
+}
+
+/** A separate chat window / study session. */
+export interface Conversation {
+  id: string;
+  title: string;
+  messageCount: number;
+  updatedAt: string;
 }
 
 export interface ChapterProgress {

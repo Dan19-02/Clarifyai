@@ -3,7 +3,7 @@
  * Stores the JWT in localStorage and attaches it as a Bearer token.
  * All requests go to /api/* (proxied to the backend by Vite in dev).
  */
-import type { StudentProfile, ChapterProgress, ChatMessage } from "./types";
+import type { StudentProfile, ChapterProgress, ChatMessage, Conversation } from "./types";
 
 const TOKEN_KEY = "clarify_token";
 
@@ -60,9 +60,21 @@ export const api = {
   me: () => request<{ user: Account }>("/me"),
   updateMe: (body: StudentProfile & { chapters: ChapterProgress[] }) =>
     request<{ user: Account }>("/me", { method: "PUT", body: JSON.stringify(body) }),
-  getMessages: () => request<{ messages: ChatMessage[] }>("/messages"),
-  addMessage: (msg: { id: string; role: string; text: string; mode?: string; sources?: any[] }) =>
-    request("/messages", { method: "POST", body: JSON.stringify(msg) }),
+
+  // Conversations (separate chat windows)
+  listConversations: () => request<{ conversations: Conversation[] }>("/conversations"),
+  createConversation: (title?: string) =>
+    request<{ conversation: Conversation }>("/conversations", { method: "POST", body: JSON.stringify({ title }) }),
+  renameConversation: (id: string, title: string) =>
+    request(`/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }),
+  deleteConversation: (id: string) => request(`/conversations/${id}`, { method: "DELETE" }),
+  getMessages: (conversationId: string) =>
+    request<{ messages: ChatMessage[] }>(`/conversations/${conversationId}/messages`),
+  addMessage: (
+    conversationId: string,
+    msg: { id: string; role: string; text: string; mode?: string; sources?: any[]; attachments?: any[] }
+  ) => request(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(msg) }),
+
   chat: (body: any) => request<{ text: string; sources: any[]; cached?: boolean }>("/chat", { method: "POST", body: JSON.stringify(body) }),
   tts: (body: { text: string; voice: string }) => request<{ audio: string }>("/tts", { method: "POST", body: JSON.stringify(body) }),
   generateImage: (body: { prompt: string; size: string }) =>

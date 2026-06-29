@@ -1,3 +1,5 @@
+import type { Attachment } from "./types";
+
 /**
  * Converts Float32 browser microphone data to raw 16-bit PCM little-endian.
  */
@@ -41,6 +43,60 @@ export function base64ToFloat32PCM(base64: string): Float32Array {
     float32Array[i] = int16Array[i] / 32768.0;
   }
   return float32Array;
+}
+
+/** Read a File as a data URL (base64). */
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Downscale an image data URL so large phone photos don't bloat uploads or
+ * storage. Caps the longest edge at `maxEdge` and re-encodes as JPEG.
+ */
+function downscaleImage(dataUrl: string, maxEdge = 1280, quality = 0.82): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+      if (scale === 1) return resolve(dataUrl); // already small enough
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(dataUrl);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+/**
+ * Turn picked files into attachments ready to display + send. Images are
+ * downscaled; other files (e.g. PDFs) are passed through as-is.
+ */
+export async function filesToAttachments(files: File[]): Promise<Attachment[]> {
+  const out: Attachment[] = [];
+  for (const file of files) {
+    const isImage = file.type.startsWith("image/");
+    let dataUrl = await readFileAsDataUrl(file);
+    if (isImage) dataUrl = await downscaleImage(dataUrl);
+    out.push({ dataUrl, mimeType: isImage ? "image/jpeg" : file.type || "application/octet-stream", name: file.name, isImage });
+  }
+  return out;
+}
+
+/** Split a data URL into the bare base64 payload the backend/Gemini expects. */
+export function dataUrlToBase64(dataUrl: string): string {
+  const comma = dataUrl.indexOf(",");
+  return comma === -1 ? dataUrl : dataUrl.slice(comma + 1);
 }
 
 /**
