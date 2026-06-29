@@ -1,11 +1,8 @@
 import type { StudentProfile, ChapterProgress, ChatMessage } from "./types";
 
-export const DEFAULT_CHAPTERS: ChapterProgress[] = [
-  { id: "ch-1", name: "Photosynthesis & Light Reactions", mastery: "developing", confidenceScore: 65, lastStudied: "2026-06-26" },
-  { id: "ch-2", name: "Newton's Second Law of Motion", mastery: "weak", confidenceScore: 35, lastStudied: "2026-06-25" },
-  { id: "ch-3", name: "Quadratic Equations & Roots", mastery: "strong", confidenceScore: 90, lastStudied: "2026-06-24" },
-  { id: "ch-4", name: "Chemical Bonding & Valency", mastery: "developing", confidenceScore: 50, lastStudied: "2026-06-23" },
-];
+// Intentionally empty — students start with a clean Chapter Mastery list and
+// add their own chapters. (No demo/prefilled data.)
+export const DEFAULT_CHAPTERS: ChapterProgress[] = [];
 
 export function makeDefaultProfile(name = "Student"): StudentProfile {
   return {

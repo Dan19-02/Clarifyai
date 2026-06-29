@@ -82,6 +82,4 @@ export const api = {
 
   chat: (body: any) => request<{ text: string; sources: any[]; cached?: boolean }>("/chat", { method: "POST", body: JSON.stringify(body) }),
   tts: (body: { text: string; voice: string }) => request<{ audio: string }>("/tts", { method: "POST", body: JSON.stringify(body) }),
-  generateImage: (body: { prompt: string; size: string }) =>
-    request<{ imageUrl: string }>("/generate-image", { method: "POST", body: JSON.stringify(body) }),
 };

@@ -8,13 +8,10 @@ import {
   MicOff,
   Volume2,
   VolumeX,
-  Image as ImageIcon,
   Send,
-  RefreshCw,
   Trash2,
   ExternalLink,
   Settings,
-  Download,
   User,
   LogOut,
   MessageSquare,
@@ -49,6 +46,7 @@ import { api, getToken } from "./api";
 import { DEFAULT_CHAPTERS, makeDefaultProfile } from "./defaults";
 import { Markdown } from "./Markdown";
 import Login from "./Login";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "./components/ui/hover-card";
 
 const SUGGESTED_QUERIES = [
   { label: "Explain Photosynthesis", prompt: "Can you explain Photosynthesis and the light reactions from the start? Ask me a diagnostic question first!" },
@@ -75,12 +73,6 @@ export default function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
-  // Generated diagrams stay device-local.
-  const [generatedImages, setGeneratedImages] = useState<{ url: string; prompt: string }[]>(() => {
-    const saved = localStorage.getItem("clarify_images");
-    return saved ? JSON.parse(saved) : [];
-  });
-
   // UI state
   const [inputText, setInputText] = useState("");
   const [attachments, setAttachments] = useState<{ dataUrl: string; mimeType: string; name: string; isImage: boolean }[]>([]);
@@ -89,12 +81,6 @@ export default function App() {
   const [mobileView, setMobileView] = useState<MobileView>("chat");
   const [deepVerify, setDeepVerify] = useState(false);
   const [showChapters, setShowChapters] = useState(false);
-
-  // Concept illustrator
-  const [imagePrompt, setImagePrompt] = useState("");
-  const [imageSize, setImageSize] = useState<"1K" | "2K" | "4K">("1K");
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imageError, setImageError] = useState<string | null>(null);
 
   // Add chapter
   const [newChapterName, setNewChapterName] = useState("");
@@ -169,14 +155,12 @@ export default function App() {
   }, [profile, chapters, account?.id]);
 
   useEffect(() => {
-    localStorage.setItem("clarify_images", JSON.stringify(generatedImages));
-  }, [generatedImages]);
-
-  useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory, isGenerating]);
 
   useEffect(() => {
+    // Clean up legacy device-local diagram cache from the removed Illustrator.
+    localStorage.removeItem("clarify_images");
     return () => {
       if (audioPlayerRef.current) audioPlayerRef.current.pause();
       stopLiveSession();
@@ -377,24 +361,6 @@ export default function App() {
     });
   };
 
-  // ---- Concept illustrator ----
-  const handleGenerateImage = async () => {
-    if (!imagePrompt.trim()) return;
-    setIsGeneratingImage(true);
-    setImageError(null);
-    try {
-      const data = await api.generateImage({ prompt: imagePrompt, size: imageSize });
-      if (data.imageUrl) {
-        setGeneratedImages((prev) => [{ url: data.imageUrl, prompt: imagePrompt }, ...prev]);
-        setImagePrompt("");
-      }
-    } catch (err: any) {
-      setImageError(err.message);
-    } finally {
-      setIsGeneratingImage(false);
-    }
-  };
-
   // ---- Chapters ----
   const handleAddChapter = (e: React.FormEvent) => {
     e.preventDefault();
@@ -570,10 +536,28 @@ export default function App() {
     return <Login />;
   }
 
-  const MODES: { key: StudyMode; label: string; icon: React.ReactNode }[] = [
-    { key: "standard", label: "Standard", icon: <Sparkles size={13} /> },
-    { key: "thinking", label: "Thinking", icon: <Brain size={13} /> },
-    { key: "search", label: "Search", icon: <Search size={13} /> }
+  const MODES: { key: StudyMode; label: string; icon: React.ReactNode; title: string; desc: string }[] = [
+    {
+      key: "standard",
+      label: "Standard",
+      icon: <Sparkles size={13} />,
+      title: "Standard — warm explanations",
+      desc: "Your everyday default. Best for understanding new concepts, clear step-by-step explanations with analogies, and general doubt-solving. Fast and conversational."
+    },
+    {
+      key: "thinking",
+      label: "Thinking",
+      icon: <Brain size={13} />,
+      title: "Thinking — deep reasoning",
+      desc: "Use for hard, multi-step problems — maths derivations, numericals, and tricky JEE/NEET questions where careful step-by-step reasoning matters most."
+    },
+    {
+      key: "search",
+      label: "Search",
+      icon: <Search size={13} />,
+      title: "Search — live web facts",
+      desc: "Use when you need up-to-date information — current events, latest data, or recent exam patterns. Answers are grounded with Google Search sources."
+    }
   ];
 
   return (
@@ -644,60 +628,6 @@ export default function App() {
             <p className="text-xs text-editorial-charcoal/70 font-serif italic border-t border-editorial-line-light pt-2.5">
               "{profile.examGoals || "Learn deeply with real analogies"}"
             </p>
-          </div>
-
-          {/* Illustrator — just below the profile details */}
-          <div className="flex flex-col gap-3 bg-white border border-editorial-line-light p-4 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-2">
-              <ImageIcon size={15} className="text-editorial-sage" />
-              <h3 className="text-sm font-semibold text-editorial-charcoal">Illustrator</h3>
-            </div>
-            <p className="text-xs text-editorial-charcoal/55 leading-relaxed">Describe a diagram and I'll draw it for visual study.</p>
-            <textarea
-              value={imagePrompt}
-              onChange={(e) => setImagePrompt(e.target.value)}
-              placeholder="e.g. Labelled diagram of an animal cell"
-              className="w-full min-h-16 px-3 py-2 border border-editorial-line rounded-xl text-xs bg-editorial-ivory/40 focus:outline-none focus:ring-1 focus:ring-editorial-sage resize-none text-editorial-charcoal placeholder-editorial-charcoal/30"
-            />
-            <div className="flex items-center justify-between">
-              <div className="flex gap-1 bg-editorial-stone/40 p-0.5 rounded-full border border-editorial-line-light">
-                {(["1K", "2K", "4K"] as const).map((sz) => (
-                  <button
-                    key={sz}
-                    onClick={() => setImageSize(sz)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
-                      imageSize === sz ? "bg-editorial-sage text-white" : "text-editorial-charcoal/40 hover:text-editorial-charcoal"
-                    }`}
-                  >
-                    {sz}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={handleGenerateImage}
-                disabled={isGeneratingImage || !imagePrompt.trim()}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-editorial-charcoal hover:bg-editorial-charcoal/90 text-white text-xs font-medium transition-all disabled:bg-editorial-stone disabled:text-editorial-charcoal/30 cursor-pointer"
-                id="btn-generate-image"
-              >
-                {isGeneratingImage ? <RefreshCw size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                Draw
-              </button>
-            </div>
-            {imageError && (
-              <div className="text-red-700 bg-red-50 text-[11px] p-2.5 rounded-lg border border-red-100">{imageError}</div>
-            )}
-            {generatedImages.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                {generatedImages.slice(0, 3).map((img, i) => (
-                  <a key={i} href={img.url} download={`clarify-diagram-${i}.png`} title={img.prompt} className="relative group">
-                    <img src={img.url} alt={img.prompt} className="w-full aspect-square object-cover rounded-lg border border-editorial-line-light" referrerPolicy="no-referrer" />
-                    <span className="absolute inset-0 bg-black/0 group-hover:bg-black/30 rounded-lg flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all">
-                      <Download size={14} />
-                    </span>
-                  </a>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* My Study Log = conversations */}
@@ -833,33 +763,57 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <div className="flex bg-editorial-stone/50 p-1 rounded-full border border-editorial-line-light">
               {MODES.map((m) => (
-                <button
-                  key={m.key}
-                  onClick={() => setStudyMode(m.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                    studyMode === m.key ? "bg-white text-editorial-charcoal shadow-sm border border-editorial-line" : "text-editorial-charcoal/50 hover:text-editorial-charcoal"
-                  }`}
-                  id={`mode-${m.key}`}
-                >
-                  {m.icon}
-                  {m.label}
-                </button>
+                <HoverCard key={m.key} openDelay={120} closeDelay={60}>
+                  <HoverCardTrigger asChild>
+                    <button
+                      onClick={() => setStudyMode(m.key)}
+                      aria-label={`${m.title}. ${m.desc}`}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                        studyMode === m.key ? "bg-white text-editorial-charcoal shadow-sm border border-editorial-line" : "text-editorial-charcoal/50 hover:text-editorial-charcoal"
+                      }`}
+                      id={`mode-${m.key}`}
+                    >
+                      {m.icon}
+                      {m.label}
+                    </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent align="start">
+                    <div className="flex items-center gap-2 mb-1.5 text-editorial-sage">
+                      {m.icon}
+                      <span className="text-sm font-semibold text-editorial-charcoal">{m.title}</span>
+                    </div>
+                    <p className="text-xs text-editorial-charcoal/70 leading-relaxed">{m.desc}</p>
+                  </HoverCardContent>
+                </HoverCard>
               ))}
             </div>
 
             <div className="flex-1" />
 
-            <button
-              onClick={() => setDeepVerify((v) => !v)}
-              title="Runs a second 'examiner' pass that double-checks facts and calculations. Slower, best for important problems."
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                deepVerify ? "bg-editorial-sage text-white border-editorial-sage" : "bg-white text-editorial-charcoal/60 border-editorial-line hover:bg-editorial-stone"
-              }`}
-              id="btn-deepverify"
-            >
-              <CheckCircle2 size={13} />
-              Deep-check
-            </button>
+            <HoverCard openDelay={120} closeDelay={60}>
+              <HoverCardTrigger asChild>
+                <button
+                  onClick={() => setDeepVerify((v) => !v)}
+                  aria-label="Deep-check — a second examiner pass that double-checks facts and calculations before answering. Slower, best for important problems where accuracy is critical."
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                    deepVerify ? "bg-editorial-sage text-white border-editorial-sage" : "bg-white text-editorial-charcoal/60 border-editorial-line hover:bg-editorial-stone"
+                  }`}
+                  id="btn-deepverify"
+                >
+                  <CheckCircle2 size={13} />
+                  Deep-check
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent align="end">
+                <div className="flex items-center gap-2 mb-1.5 text-editorial-sage">
+                  <CheckCircle2 size={14} />
+                  <span className="text-sm font-semibold text-editorial-charcoal">Deep-check — examiner pass</span>
+                </div>
+                <p className="text-xs text-editorial-charcoal/70 leading-relaxed">
+                  Adds a second "examiner" pass that double-checks facts and calculations before answering. Slower, but best for important problems where accuracy is critical.
+                </p>
+              </HoverCardContent>
+            </HoverCard>
 
             <button
               onClick={isLiveActive ? stopLiveSession : startLiveSession}
