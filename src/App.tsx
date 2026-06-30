@@ -47,6 +47,7 @@ import { DEFAULT_CHAPTERS, makeDefaultProfile } from "./defaults";
 import { Markdown } from "./Markdown";
 import Login from "./Login";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "./components/ui/hover-card";
+import { STUDY_FACTS, FALLBACK_STUDY_FACT, pickFirstFactIndex } from "./facts";
 
 const SUGGESTED_QUERIES = [
   { label: "Explain Photosynthesis", prompt: "Can you explain Photosynthesis and the light reactions from the start? Ask me a diagnostic question first!" },
@@ -956,14 +957,7 @@ export default function App() {
             ))}
 
             {isGenerating && (
-              <div className="self-start max-w-[85%] flex flex-col items-start">
-                <div className="text-[10px] text-editorial-charcoal/40 mb-1">Clarify.AI is thinking…</div>
-                <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-editorial-line rounded-tl-sm flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-editorial-sage/40 animate-bounce" style={{ animationDelay: "0s" }} />
-                  <span className="w-2 h-2 rounded-full bg-editorial-sage/70 animate-bounce" style={{ animationDelay: "0.2s" }} />
-                  <span className="w-2 h-2 rounded-full bg-editorial-sage animate-bounce" style={{ animationDelay: "0.4s" }} />
-                </div>
-              </div>
+              <SmartFactsLoader seedMessage={[...chatHistory].reverse().find((m) => m.role === "user")?.text || ""} />
             )}
 
             <div ref={chatEndRef} />
@@ -1154,6 +1148,48 @@ export default function App() {
 }
 
 // Visual notebook: parses structured teacher responses into tabbed sections.
+// Engaging loader: rotates curated "Did you know?" facts (client-only, no model
+// call) while the answer generates. Facts auto-change every 10s and stay until
+// the full answer has been generated.
+function SmartFactsLoader({ seedMessage }: { seedMessage: string }) {
+  const [idx, setIdx] = useState(() => pickFirstFactIndex(seedMessage));
+  useEffect(() => {
+    const t = setInterval(() => setIdx((i) => (i + 1) % STUDY_FACTS.length), 10000);
+    return () => clearInterval(t);
+  }, []);
+  const fact = STUDY_FACTS[idx] || FALLBACK_STUDY_FACT;
+  return (
+    <div className="self-start max-w-[92%] md:max-w-[85%] flex flex-col items-start">
+      <div className="flex items-center gap-2 mb-1.5 text-[10px] text-editorial-charcoal/40">
+        <span className="flex gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-editorial-sage/40 animate-bounce" style={{ animationDelay: "0s" }} />
+          <span className="w-1.5 h-1.5 rounded-full bg-editorial-sage/70 animate-bounce" style={{ animationDelay: "0.2s" }} />
+          <span className="w-1.5 h-1.5 rounded-full bg-editorial-sage animate-bounce" style={{ animationDelay: "0.4s" }} />
+        </span>
+        Clarify.AI is thinking…
+      </div>
+      <div className="p-4 rounded-2xl bg-white border border-editorial-line-light rounded-tl-sm shadow-sm max-w-md">
+        <div className="flex items-center gap-1.5 mb-2 text-editorial-sage">
+          <Sparkles size={12} />
+          <span className="text-[10px] font-bold uppercase tracking-[0.15em]">Did you know?</span>
+        </div>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={idx}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.4 }}
+            className="text-sm text-editorial-charcoal/80 font-serif italic leading-relaxed"
+          >
+            {fact.text}
+          </motion.p>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
 interface NotebookViewerProps {
   sections: NotebookSection[];
 }
