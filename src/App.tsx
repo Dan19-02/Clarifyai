@@ -286,7 +286,10 @@ export default function App() {
     try {
       const serverHistory = chatHistory.slice(-10).map((m) => ({ role: m.role, text: m.text }));
       const images = atts.map((a) => ({ data: dataUrlToBase64(a.dataUrl), mimeType: a.mimeType }));
-      const reqBody = {
+
+      // Generate (and, with Deep-check on, fact-check) the FULL answer, then show
+      // it all at once. No streaming: the complete reply lands in a single bubble.
+      const data = await api.chat({
         message: text,
         history: serverHistory,
         mode: studyMode,
@@ -296,47 +299,19 @@ export default function App() {
         preferredAnalogy: profile.preferredAnalogy,
         deepVerify,
         images
+      });
+
+      const modelMsg: ChatMessage = {
+        id: `model-${Date.now()}`,
+        role: "model",
+        text: data.text,
+        timestamp: new Date().toLocaleTimeString(),
+        mode: studyMode,
+        sources: data.sources || []
       };
-      const stamp = () => new Date().toLocaleTimeString();
-      // Stream the common text path so the explanation appears live; image
-      // uploads and deep-verify use the proven non-streaming /chat.
-      const canStream = images.length === 0 && !deepVerify;
 
-      if (canStream) {
-        const modelId = `model-${Date.now()}`;
-        // One live model bubble that grows as tokens arrive (insert, then patch).
-        const upsert = (patch: Partial<ChatMessage>) =>
-          setChatHistory((prev) =>
-            prev.some((m) => m.id === modelId)
-              ? prev.map((m) => (m.id === modelId ? { ...m, ...patch } : m))
-              : [...prev, { id: modelId, role: "model", text: "", timestamp: stamp(), mode: studyMode, sources: [], ...patch }]
-          );
-
-        let result: { text: string; sources: any[]; cached?: boolean; fallback?: boolean };
-        try {
-          result = await api.chatStream(reqBody, (full) => upsert({ text: full }));
-        } catch {
-          result = { text: "", sources: [], fallback: true }; // stream errored → retry non-streaming
-        }
-        if (result.fallback) {
-          const data = await api.chat(reqBody); // may throw → outer catch shows the error bubble
-          result = { text: data.text, sources: data.sources || [] };
-        }
-        upsert({ text: result.text, sources: result.sources || [] });
-        api.addMessage(convId, { id: modelId, role: "model", text: result.text, mode: studyMode, sources: result.sources || [] }).catch(() => {});
-      } else {
-        const data = await api.chat(reqBody);
-        const modelMsg: ChatMessage = {
-          id: `model-${Date.now()}`,
-          role: "model",
-          text: data.text,
-          timestamp: stamp(),
-          mode: studyMode,
-          sources: data.sources || []
-        };
-        setChatHistory((prev) => [...prev, modelMsg]);
-        api.addMessage(convId, modelMsg).catch(() => {});
-      }
+      setChatHistory((prev) => [...prev, modelMsg]);
+      api.addMessage(convId, modelMsg).catch(() => {});
     } catch (error: any) {
       console.error(error);
       const errorMsg: ChatMessage = {
