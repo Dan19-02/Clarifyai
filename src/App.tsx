@@ -403,12 +403,24 @@ export default function App() {
       nextPlayTimeRef.current = playCtx.currentTime;
       liveInterruptedRef.current = false;
 
+      // Microphone needs a secure context (HTTPS, or localhost). Fail clearly
+      // instead of throwing a cryptic error when the page is served over http://.
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setLiveStatus("Microphone needs a secure page — open the app over HTTPS (or localhost) and allow mic access.");
+        setIsLiveActive(false);
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
       const token = getToken();
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/api/live${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+      // Route the socket to the BACKEND origin (the same place HTTP calls go via
+      // VITE_API_URL), so live voice works when the frontend and backend are
+      // deployed on different URLs. Falls back to same-origin for local dev.
+      const apiBase = (import.meta.env.VITE_API_URL || "").trim().replace(/\/$/, "");
+      const wsBase = apiBase
+        ? apiBase.replace(/^http/i, "ws") // http→ws, https→wss
+        : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+      const wsUrl = `${wsBase}/api/live${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 
       const ws = new WebSocket(wsUrl);
       liveWsRef.current = ws;
