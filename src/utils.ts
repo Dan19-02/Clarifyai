@@ -109,7 +109,13 @@ export interface NotebookSection {
   content: string;
 }
 
-export function parseTeachingSections(text: string): NotebookSection[] {
+export interface ParsedTeaching {
+  /** Any content before the first notebook section (e.g. the Exam-Ready Answer). */
+  preamble: string;
+  sections: NotebookSection[];
+}
+
+export function parseTeachingSections(text: string): ParsedTeaching {
   // The 9 Clarify notebook sections, identified by emoji + title.
   const defs = [
     { emoji: "🌟", title: "Big Idea" },
@@ -137,9 +143,11 @@ export function parseTeachingSections(text: string): NotebookSection[] {
   }
 
   // Need a real notebook (most sections present), not a stray emoji match.
-  if (found.length < 3) return [];
+  if (found.length < 3) return { preamble: "", sections: [] };
 
   found.sort((a, b) => a.idx - b.idx);
+  // Everything before the first section (e.g. the Exam-Ready Answer) is preamble.
+  const preamble = text.slice(0, found[0].idx).trim();
 
   const sections: NotebookSection[] = [];
   for (let i = 0; i < found.length; i++) {
@@ -153,5 +161,5 @@ export function parseTeachingSections(text: string): NotebookSection[] {
     sections.push({ title: cur.title, emoji: cur.emoji, content });
   }
 
-  return sections;
+  return { preamble, sections };
 }

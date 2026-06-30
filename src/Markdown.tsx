@@ -5,7 +5,7 @@
  * diagrams. The old UI dumped raw text, so equations and diagrams showed as
  * gibberish. This component renders:
  *   - GitHub-flavored markdown (tables, lists, bold, links)
- *   - LaTeX math via KaTeX  ($...$ inline, $$...$$ block)
+ *   - LaTeX math via KaTeX ($...$ inline, $$...$$ block)
  *   - Mermaid flowcharts (```mermaid code fences)
  */
 import React, { useEffect, useId, useState } from "react";
@@ -15,7 +15,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 
-// Mermaid (and its cytoscape/dagre deps) is ~1.5MB, so we load it lazily — only
+// Mermaid (and its cytoscape/dagre deps) is ~1.5MB, so we load it lazily, only
 // when a response actually contains a diagram. Critical for low-end mobile.
 let mermaidPromise: Promise<typeof import("mermaid").default> | null = null;
 function getMermaid() {

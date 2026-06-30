@@ -81,5 +81,64 @@ export const api = {
   ) => request(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(msg) }),
 
   chat: (body: any) => request<{ text: string; sources: any[]; cached?: boolean }>("/chat", { method: "POST", body: JSON.stringify(body) }),
+
+  // Streaming chat (SSE). Calls onDelta with the FULL text so far each time a
+  // token arrives. Resolves with the final text/sources, or { fallback: true }
+  // when the server signals this request should use the non-streaming /chat.
+  chatStream: async (
+    body: any,
+    onDelta: (fullText: string) => void
+  ): Promise<{ text: string; sources: any[]; cached?: boolean; fallback?: boolean }> => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/chat/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok || !res.body) {
+      if (res.status === 401) setToken(null);
+      throw new Error(`Stream failed (${res.status})`);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let text = "";
+    let sources: any[] = [];
+    let cached = false;
+    let fallback = false;
+    let finished = false;
+    while (!finished) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n"); // SSE events are separated by a blank line
+      buffer = parts.pop() || "";
+      for (const part of parts) {
+        const dataLine = part.split("\n").find((l) => l.startsWith("data:"));
+        if (!dataLine) continue;
+        let evt: any;
+        try {
+          evt = JSON.parse(dataLine.slice(5).trim());
+        } catch {
+          continue;
+        }
+        if (evt.type === "delta") {
+          text += evt.text;
+          onDelta(text);
+        } else if (evt.type === "done") {
+          sources = evt.sources || [];
+          cached = !!evt.cached;
+          finished = true;
+        } else if (evt.type === "fallback") {
+          fallback = true;
+          finished = true;
+        } else if (evt.type === "error") {
+          throw new Error(evt.error || "stream error");
+        }
+      }
+    }
+    return { text, sources, cached, fallback };
+  },
+
   tts: (body: { text: string; voice: string }) => request<{ audio: string }>("/tts", { method: "POST", body: JSON.stringify(body) }),
 };

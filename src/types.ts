@@ -7,7 +7,7 @@ export interface GroundingSource {
 
 /** A file a student attaches to a message (image or document). */
 export interface Attachment {
-  dataUrl: string; // full data URL, e.g. "data:image/png;base64,..." — used for display + upload
+  dataUrl: string; // full data URL, e.g. "data:image/png;base64,...": used for display + upload
   mimeType: string;
   name: string;
   isImage: boolean;

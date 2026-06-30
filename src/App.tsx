@@ -58,6 +58,13 @@ const SUGGESTED_QUERIES = [
 
 const MAX_ATTACHMENTS = 6;
 
+// One-tap "I'm still lost" signal. The student often can't articulate WHAT they
+// don't get, this lets them say "go again, differently" with a single tap, and
+// the backend's comprehension loop climbs the re-explain ladder (gut feel →
+// fresh analogy → smallest step + picture → worked example → pinpoint).
+const STILL_CONFUSED_PROMPT =
+  "I still don't fully get it, can you explain that part differently, in a simpler way?";
+
 type MobileView = "study" | "chat";
 
 export default function App() {
@@ -279,8 +286,7 @@ export default function App() {
     try {
       const serverHistory = chatHistory.slice(-10).map((m) => ({ role: m.role, text: m.text }));
       const images = atts.map((a) => ({ data: dataUrlToBase64(a.dataUrl), mimeType: a.mimeType }));
-
-      const data = await api.chat({
+      const reqBody = {
         message: text,
         history: serverHistory,
         mode: studyMode,
@@ -290,19 +296,47 @@ export default function App() {
         preferredAnalogy: profile.preferredAnalogy,
         deepVerify,
         images
-      });
-
-      const modelMsg: ChatMessage = {
-        id: `model-${Date.now()}`,
-        role: "model",
-        text: data.text,
-        timestamp: new Date().toLocaleTimeString(),
-        mode: studyMode,
-        sources: data.sources || []
       };
+      const stamp = () => new Date().toLocaleTimeString();
+      // Stream the common text path so the explanation appears live; image
+      // uploads and deep-verify use the proven non-streaming /chat.
+      const canStream = images.length === 0 && !deepVerify;
 
-      setChatHistory((prev) => [...prev, modelMsg]);
-      api.addMessage(convId, modelMsg).catch(() => {});
+      if (canStream) {
+        const modelId = `model-${Date.now()}`;
+        // One live model bubble that grows as tokens arrive (insert, then patch).
+        const upsert = (patch: Partial<ChatMessage>) =>
+          setChatHistory((prev) =>
+            prev.some((m) => m.id === modelId)
+              ? prev.map((m) => (m.id === modelId ? { ...m, ...patch } : m))
+              : [...prev, { id: modelId, role: "model", text: "", timestamp: stamp(), mode: studyMode, sources: [], ...patch }]
+          );
+
+        let result: { text: string; sources: any[]; cached?: boolean; fallback?: boolean };
+        try {
+          result = await api.chatStream(reqBody, (full) => upsert({ text: full }));
+        } catch {
+          result = { text: "", sources: [], fallback: true }; // stream errored → retry non-streaming
+        }
+        if (result.fallback) {
+          const data = await api.chat(reqBody); // may throw → outer catch shows the error bubble
+          result = { text: data.text, sources: data.sources || [] };
+        }
+        upsert({ text: result.text, sources: result.sources || [] });
+        api.addMessage(convId, { id: modelId, role: "model", text: result.text, mode: studyMode, sources: result.sources || [] }).catch(() => {});
+      } else {
+        const data = await api.chat(reqBody);
+        const modelMsg: ChatMessage = {
+          id: `model-${Date.now()}`,
+          role: "model",
+          text: data.text,
+          timestamp: stamp(),
+          mode: studyMode,
+          sources: data.sources || []
+        };
+        setChatHistory((prev) => [...prev, modelMsg]);
+        api.addMessage(convId, modelMsg).catch(() => {});
+      }
     } catch (error: any) {
       console.error(error);
       const errorMsg: ChatMessage = {
@@ -407,7 +441,7 @@ export default function App() {
       // Microphone needs a secure context (HTTPS, or localhost). Fail clearly
       // instead of throwing a cryptic error when the page is served over http://.
       if (!navigator.mediaDevices?.getUserMedia) {
-        setLiveStatus("Microphone needs a secure page — open the app over HTTPS (or localhost) and allow mic access.");
+        setLiveStatus("Microphone needs a secure page. Open the app over HTTPS (or localhost) and allow mic access.");
         setIsLiveActive(false);
         return;
       }
@@ -523,9 +557,19 @@ export default function App() {
   };
 
   const renderMessageContent = (message: ChatMessage) => {
-    const sections = parseTeachingSections(message.text);
+    const { preamble, sections } = parseTeachingSections(message.text);
     if (sections.length > 0) {
-      return <NotebookViewer sections={sections} />;
+      // The Exam-Ready Answer (preamble) renders in full above the tabbed notebook.
+      return (
+        <>
+          {preamble && (
+            <div className="mb-3">
+              <Markdown>{preamble}</Markdown>
+            </div>
+          )}
+          <NotebookViewer sections={sections} />
+        </>
+      );
     }
     return <Markdown>{message.text}</Markdown>;
   };
@@ -554,22 +598,22 @@ export default function App() {
       key: "standard",
       label: "Standard",
       icon: <Sparkles size={13} />,
-      title: "Standard — warm explanations",
+      title: "Standard: warm explanations",
       desc: "Your everyday default. Best for understanding new concepts, clear step-by-step explanations with analogies, and general doubt-solving. Fast and conversational."
     },
     {
       key: "thinking",
       label: "Thinking",
       icon: <Brain size={13} />,
-      title: "Thinking — deep reasoning",
-      desc: "Use for hard, multi-step problems — maths derivations, numericals, and tricky JEE/NEET questions where careful step-by-step reasoning matters most."
+      title: "Thinking: deep reasoning",
+      desc: "Use for hard, multi-step problems such as maths derivations, numericals, and tricky JEE/NEET questions where careful step-by-step reasoning matters most."
     },
     {
       key: "search",
       label: "Search",
       icon: <Search size={13} />,
-      title: "Search — live web facts",
-      desc: "Use when you need up-to-date information — current events, latest data, or recent exam patterns. Answers are grounded with Google Search sources."
+      title: "Search: live web facts",
+      desc: "Use when you need up-to-date information such as current events, latest data, or recent exam patterns. Answers are grounded with Google Search sources."
     }
   ];
 
@@ -661,7 +705,7 @@ export default function App() {
 
             <div className="flex flex-col gap-1.5">
               {conversations.length === 0 && (
-                <p className="text-xs text-editorial-charcoal/40 px-1 py-2">No chats yet — start one above.</p>
+                <p className="text-xs text-editorial-charcoal/40 px-1 py-2">No chats yet. Start one above.</p>
               )}
               {conversations.map((c) => (
                 <div
@@ -687,7 +731,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Chapter mastery — collapsible, secondary */}
+          {/* Chapter mastery, collapsible, secondary */}
           <div className="flex flex-col gap-2 border-t border-editorial-line pt-3 mt-auto">
             <button
               onClick={() => setShowChapters((v) => !v)}
@@ -807,7 +851,7 @@ export default function App() {
               <HoverCardTrigger asChild>
                 <button
                   onClick={() => setDeepVerify((v) => !v)}
-                  aria-label="Deep-check — a second examiner pass that double-checks facts and calculations before answering. Slower, best for important problems where accuracy is critical."
+                  aria-label="Deep-check: a second examiner pass that double-checks facts and calculations before answering. Slower, best for important problems where accuracy is critical."
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
                     deepVerify ? "bg-editorial-sage text-white border-editorial-sage" : "bg-white text-editorial-charcoal/60 border-editorial-line hover:bg-editorial-stone"
                   }`}
@@ -820,7 +864,7 @@ export default function App() {
               <HoverCardContent align="end">
                 <div className="flex items-center gap-2 mb-1.5 text-editorial-sage">
                   <CheckCircle2 size={14} />
-                  <span className="text-sm font-semibold text-editorial-charcoal">Deep-check — examiner pass</span>
+                  <span className="text-sm font-semibold text-editorial-charcoal">Deep-check: examiner pass</span>
                 </div>
                 <p className="text-xs text-editorial-charcoal/70 leading-relaxed">
                   Adds a second "examiner" pass that double-checks facts and calculations before answering. Slower, but best for important problems where accuracy is critical.
@@ -938,9 +982,23 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Listen */}
+                  {/* Action row: stay-until-it-clicks re-explain + Listen */}
                   {message.role === "model" && message.text && (
-                    <div className="mt-3 flex justify-end border-t border-editorial-line-light pt-2.5">
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-editorial-line-light pt-2.5">
+                      {/* One-tap "still fuzzy", only on teaching-length replies, not greetings/errors */}
+                      {message.text.length > 200 ? (
+                        <button
+                          onClick={() => handleSendMessage(STILL_CONFUSED_PROMPT)}
+                          disabled={isGenerating}
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-sage border border-editorial-line-light disabled:opacity-40"
+                          id={`btn-reexplain-${message.id}`}
+                          title="Explain it again, a different way, as many times as you need"
+                        >
+                          <Sparkles size={12} /> Still fuzzy? Explain differently
+                        </button>
+                      ) : (
+                        <span />
+                      )}
                       <button
                         onClick={() => handleSpeak(message.id, message.text)}
                         className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all ${
@@ -1030,7 +1088,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mobile bottom nav — 2 tabs */}
+      {/* Mobile bottom nav, 2 tabs */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-editorial-line bg-editorial-ivory/95 backdrop-blur-sm">
         {([
           { k: "study", label: "Study Log", icon: <MessageSquare size={18} /> },

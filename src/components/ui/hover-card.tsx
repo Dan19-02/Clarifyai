@@ -1,5 +1,5 @@
 /**
- * shadcn/ui HoverCard (Radix-based) — https://ui.shadcn.com/docs/components/radix/hover-card
+ * shadcn/ui HoverCard (Radix-based): https://ui.shadcn.com/docs/components/radix/hover-card
  * Content is styled with Clarify.AI's editorial design tokens instead of the
  * default shadcn popover tokens so it matches the rest of the app.
  */

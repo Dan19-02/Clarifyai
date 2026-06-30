@@ -1,6 +1,6 @@
 import type { StudentProfile, ChapterProgress, ChatMessage } from "./types";
 
-// Intentionally empty — students start with a clean Chapter Mastery list and
+// Intentionally empty. Students start with a clean Chapter Mastery list and
 // add their own chapters. (No demo/prefilled data.)
 export const DEFAULT_CHAPTERS: ChapterProgress[] = [];
 
