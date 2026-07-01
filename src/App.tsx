@@ -593,7 +593,7 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-[100dvh] bg-editorial-ivory text-editorial-charcoal font-sans flex flex-col antialiased">
+    <div className="h-[100dvh] bg-editorial-ivory text-editorial-charcoal font-sans flex flex-col antialiased">
       {/* Header */}
       <nav className="flex justify-between items-center px-4 py-3 md:px-8 border-b border-editorial-line bg-editorial-ivory">
         <div className="flex items-center gap-3">
@@ -631,10 +631,10 @@ export default function App() {
       </nav>
 
       {/* Two-panel workspace */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-[1500px] w-full mx-auto pb-14 lg:pb-0">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden max-w-[1500px] w-full mx-auto pb-14 lg:pb-0">
 
         {/* LEFT: Study panel */}
-        <aside className={`${mobileView === "study" ? "flex" : "hidden"} lg:flex w-full lg:w-80 lg:shrink-0 border-r border-editorial-line p-4 md:p-5 flex-col gap-4 bg-editorial-ivory overflow-y-auto`}>
+        <aside className={`${mobileView === "study" ? "flex" : "hidden"} lg:flex w-full lg:w-80 lg:shrink-0 min-h-0 border-r border-editorial-line p-4 md:p-5 flex-col gap-4 bg-editorial-ivory overflow-y-auto`}>
 
           {/* New chat */}
           <button
@@ -789,7 +789,7 @@ export default function App() {
         </aside>
 
         {/* RIGHT: Chat panel */}
-        <main className={`${mobileView === "chat" ? "flex" : "hidden"} lg:flex flex-1 flex-col bg-white/40 p-3 md:p-6 overflow-hidden`}>
+        <main className={`${mobileView === "chat" ? "flex" : "hidden"} lg:flex flex-1 min-h-0 flex-col bg-white/40 p-3 md:p-6 overflow-hidden`}>
 
           {/* Slim toolbar */}
           <div className="flex flex-wrap items-center gap-2 mb-3">
