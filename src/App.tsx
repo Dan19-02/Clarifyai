@@ -624,8 +624,9 @@ export default function App() {
 
   const renderMessageContent = (message: ChatMessage) => {
     // While a draft is streaming in, render it as plain markdown; the tabbed
-    // notebook appears once the final answer lands (no mid-stream reshuffle).
-    if (message.streaming) return <Markdown>{message.text}</Markdown>;
+    // notebook appears once the final answer lands (no mid-stream reshuffle),
+    // and diagrams hold a placeholder so Mermaid never parses a partial chart.
+    if (message.streaming) return <Markdown streaming>{message.text}</Markdown>;
     const { preamble, sections } = parseTeachingSections(message.text);
     if (sections.length > 0) {
       // The Exam-Ready Answer (preamble) renders in full above the tabbed notebook.

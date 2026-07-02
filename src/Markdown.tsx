@@ -21,7 +21,10 @@ let mermaidPromise: Promise<typeof import("mermaid").default> | null = null;
 function getMermaid() {
   if (!mermaidPromise) {
     mermaidPromise = import("mermaid").then((m) => {
-      m.default.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
+      // suppressErrorRendering is essential: without it, a failed parse
+      // injects a big "Syntax error" bomb SVG into document.body, one per
+      // attempt. We handle failures ourselves (source fallback below).
+      m.default.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict", suppressErrorRendering: true });
       return m.default;
     });
   }
@@ -71,9 +74,22 @@ function MermaidBlock({ chart }: { chart: string }) {
 
 interface MarkdownProps {
   children: string;
+  /** True while the text is still streaming in. Mermaid is NEVER invoked on a
+   *  partial chart (every delta would re-parse an incomplete diagram and fail);
+   *  a quiet placeholder holds the spot until the final answer renders. */
+  streaming?: boolean;
 }
 
-function MarkdownImpl({ children }: MarkdownProps) {
+/** Placeholder shown where a diagram will draw once the answer completes. */
+function DiagramPending() {
+  return (
+    <div className="my-3 flex justify-center rounded-xl border border-dashed border-editorial-line bg-editorial-stone/40 p-4">
+      <span className="text-xs text-editorial-charcoal/70">Diagram will draw when the answer completes…</span>
+    </div>
+  );
+}
+
+function MarkdownImpl({ children, streaming }: MarkdownProps) {
   return (
     <div className="clarify-prose space-y-3 text-sm leading-relaxed text-editorial-charcoal break-words md:text-[15px]">
       <ReactMarkdown
@@ -87,7 +103,7 @@ function MarkdownImpl({ children }: MarkdownProps) {
             const lang = match?.[1];
             const value = String(children).replace(/\n$/, "");
 
-            if (lang === "mermaid") return <MermaidBlock chart={value} />;
+            if (lang === "mermaid") return streaming ? <DiagramPending /> : <MermaidBlock chart={value} />;
 
             if (lang || value.includes("\n")) {
               return (
