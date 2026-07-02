@@ -138,5 +138,11 @@ export const api = {
       body: JSON.stringify(body),
     }),
   chatStream,
+  /** On-demand Deep-check of an existing answer (examiner pass). */
+  deepCheck: (body: { question: string; text: string }) =>
+    request<{ text: string; verification: "passed" | "unavailable" }>("/chat/verify", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   tts: (body: { text: string; voice: string }) => request<{ audio: string }>("/tts", { method: "POST", body: JSON.stringify(body) }),
 };

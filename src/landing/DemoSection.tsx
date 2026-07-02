@@ -4,7 +4,7 @@
  * shows the product, not a mockup of it. The notebook tabs are fully
  * explorable right here on the page.
  */
-import { Sparkles, Brain, Search, CheckCircle2, Mic, Volume2 } from "lucide-react";
+import { Sparkles, BookOpen, CheckCircle2, Volume2 } from "lucide-react";
 import { parseTeachingSections } from "../utils";
 import { Markdown } from "../Markdown";
 import { NotebookViewer } from "../NotebookViewer";
@@ -21,9 +21,10 @@ export default function DemoSection() {
             Watch it teach.
           </h2>
           <p className="landing-pretty max-w-md text-[15px] leading-relaxed text-editorial-charcoal/70">
-            This is a real answer, exactly as a student sees it: the exam&#8209;ready
-            answer first, then a nine&#8209;part study notebook. Tap through it.
-            Even the diagram was drawn by the teacher.
+            This is a real answer in the Deep understanding view, exactly as a
+            student sees it: quick questions get short, clear replies, and one
+            tap opens this full study view, the exam&#8209;ready answer first,
+            then a nine&#8209;part notebook. Even the diagram was drawn by the teacher.
           </p>
         </div>
 
@@ -36,25 +37,9 @@ export default function DemoSection() {
               </div>
               <span className="font-serif text-sm italic tracking-tight text-editorial-charcoal">Clarify.AI</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="hidden rounded-full border border-editorial-line-light bg-editorial-stone/50 p-1 sm:flex">
-                <span className="flex items-center gap-1.5 rounded-full border border-editorial-line bg-white px-3 py-1.5 text-xs font-medium text-editorial-charcoal shadow-sm">
-                  <Sparkles size={13} /> Standard
-                </span>
-                <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-editorial-charcoal/70">
-                  <Brain size={13} /> Thinking
-                </span>
-                <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-editorial-charcoal/70">
-                  <Search size={13} /> Search
-                </span>
-              </div>
-              <span className="hidden items-center gap-1.5 rounded-full border border-editorial-line bg-white px-3 py-1.5 text-xs font-medium text-editorial-charcoal/70 md:flex">
-                <CheckCircle2 size={13} /> Deep-check
-              </span>
-              <span className="hidden items-center gap-1.5 rounded-full border border-editorial-line bg-white px-3 py-1.5 text-xs font-medium text-editorial-charcoal/70 md:flex">
-                <Mic size={13} /> Voice
-              </span>
-            </div>
+            <span className="hidden rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1.5 text-xs font-medium text-editorial-sage sm:flex sm:items-center sm:gap-1.5">
+              <BookOpen size={13} /> Deep understanding view
+            </span>
           </div>
 
           <div className="flex flex-col gap-5 bg-[#FAF9F6]/40 p-3 sm:p-5 md:p-8">
@@ -62,8 +47,6 @@ export default function DemoSection() {
             <div className="flex max-w-[92%] flex-col items-end self-end md:max-w-[75%]">
               <div className="mb-1 flex items-center gap-2 text-[10px] text-editorial-charcoal/70">
                 <span>You</span>
-                <span>&middot;</span>
-                <span>Standard mode</span>
               </div>
               <div className="rounded-2xl rounded-tr-sm border border-editorial-line bg-editorial-stone p-4 text-sm text-editorial-charcoal shadow-sm md:p-5 md:text-base">
                 {REAL_QUESTION}
@@ -86,7 +69,10 @@ export default function DemoSection() {
                 <NotebookViewer sections={parsed.sections} />
                 <div aria-hidden="true" className="pointer-events-none mt-3 flex items-center justify-between gap-2 border-t border-editorial-line-light pt-2.5 select-none">
                   <span className="flex items-center gap-1.5 rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage">
-                    <Sparkles size={12} /> Still fuzzy? Explain differently
+                    <Sparkles size={12} /> Still fuzzy?
+                  </span>
+                  <span className="hidden items-center gap-1.5 rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage sm:flex">
+                    <CheckCircle2 size={12} /> Deep-check
                   </span>
                   <span className="flex items-center gap-1.5 rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage">
                     <Volume2 size={12} /> Listen

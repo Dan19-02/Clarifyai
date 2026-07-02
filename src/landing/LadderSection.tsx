@@ -55,7 +55,7 @@ export default function LadderSection() {
               aria-hidden="true"
               className="pointer-events-none mt-5 inline-flex items-center gap-1.5 rounded-full border border-editorial-line-light bg-editorial-stone px-4 py-2 text-sm text-editorial-sage select-none"
             >
-              <Sparkles size={14} /> Still fuzzy? Explain differently
+              <Sparkles size={14} /> Still fuzzy?
             </span>
             <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-editorial-charcoal/70 md:text-base">
               One tap. You never have to put your confusion into words. The teacher

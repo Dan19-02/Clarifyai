@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import {
   Sparkles,
-  Brain,
+  BookOpen,
   Search,
   Mic,
   MicOff,
@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  StudyMode,
   ChatMessage,
   ChapterProgress,
   StudentProfile,
@@ -49,14 +48,13 @@ import { NotebookViewer } from "./NotebookViewer";
 // The public landing site is only for signed-out visitors, so it loads as its
 // own chunk and never weighs down a student's session.
 const Landing = lazy(() => import("./landing/Landing"));
-import { HoverCard, HoverCardTrigger, HoverCardContent } from "./components/ui/hover-card";
 import { STUDY_FACTS, FALLBACK_STUDY_FACT, pickFirstFactIndex } from "./facts";
 
 const SUGGESTED_QUERIES = [
-  { label: "Explain Photosynthesis", prompt: "Can you explain Photosynthesis and the light reactions from the start? Ask me a diagnostic question first!" },
+  { label: "Explain Photosynthesis", prompt: "Can you explain photosynthesis simply?" },
   { label: "Newton's 2nd Law (JEE)", prompt: "Explain Newton's Second Law of Motion at a JEE exam level. Give me a good analogy!" },
-  { label: "Cell Division (NEET)", prompt: "I am preparing for NEET. Let's study Cell Division (Mitosis vs Meiosis). Start with simple intuition." },
-  { label: "Quadratic Equations", prompt: "Let's study Quadratic Equations and how to find their roots step-by-step with a worked example." }
+  { label: "Cell Division (NEET)", prompt: "What is the difference between mitosis and meiosis? I am preparing for NEET." },
+  { label: "Quadratic Equations", prompt: "How do I find the roots of a quadratic equation?" }
 ];
 
 const MAX_ATTACHMENTS = 6;
@@ -67,6 +65,9 @@ const MAX_ATTACHMENTS = 6;
 // fresh analogy → smallest step + picture → worked example → pinpoint).
 const STILL_CONFUSED_PROMPT =
   "I still don't fully get it, can you explain that part differently, in a simpler way?";
+
+const ACTION_PILL =
+  "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-sage border border-editorial-line-light disabled:opacity-40 cursor-pointer";
 
 type MobileView = "study" | "chat";
 
@@ -87,10 +88,8 @@ export default function App() {
   // UI state
   const [inputText, setInputText] = useState("");
   const [attachments, setAttachments] = useState<{ dataUrl: string; mimeType: string; name: string; isImage: boolean }[]>([]);
-  const [studyMode, setStudyMode] = useState<StudyMode>("standard");
   const [isGenerating, setIsGenerating] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>("chat");
-  const [deepVerify, setDeepVerify] = useState(false);
   const [showChapters, setShowChapters] = useState(false);
 
   // Add chapter
@@ -272,35 +271,40 @@ export default function App() {
   const removeAttachment = (idx: number) => setAttachments((prev) => prev.filter((_, i) => i !== idx));
 
   // ---- Send a message ----
-  const handleSendMessage = async (textToSend?: string) => {
+  // opts.deep: ask for the full study view (exam-ready answer + notebook).
+  // opts.silent: don't add a user bubble (the Deep understanding button
+  // re-asks a question that is already on screen).
+  const handleSendMessage = async (textToSend?: string, opts?: { deep?: boolean; silent?: boolean }) => {
     const text = (textToSend ?? inputText).trim();
-    const atts = attachments;
+    const atts = opts?.silent ? [] : attachments;
     if ((!text && atts.length === 0) || !activeId || isGenerating) return;
     const convId = activeId;
     const isFirstMessage = chatHistory.length === 0;
+    const deep = opts?.deep === true;
 
-    setInputText("");
-    setAttachments([]);
+    if (!opts?.silent) {
+      setInputText("");
+      setAttachments([]);
 
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      text,
-      timestamp: new Date().toLocaleTimeString(),
-      mode: studyMode,
-      attachments: atts
-    };
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        text,
+        timestamp: new Date().toLocaleTimeString(),
+        attachments: atts
+      };
 
-    setChatHistory((prev) => [...prev, userMsg]);
-    api.addMessage(convId, userMsg).catch(() => {});
+      setChatHistory((prev) => [...prev, userMsg]);
+      api.addMessage(convId, userMsg).catch(() => {});
 
-    // Name the chat after its first message.
-    if (isFirstMessage && text) {
-      const title = text.length > 48 ? text.slice(0, 48) + "…" : text;
-      bumpConversation(convId, { title, messageCount: 1 });
-      api.renameConversation(convId, title).catch(() => {});
-    } else {
-      bumpConversation(convId);
+      // Name the chat after its first message.
+      if (isFirstMessage && text) {
+        const title = text.length > 48 ? text.slice(0, 48) + "…" : text;
+        bumpConversation(convId, { title, messageCount: 1 });
+        api.renameConversation(convId, title).catch(() => {});
+      } else {
+        bumpConversation(convId);
+      }
     }
 
     setIsGenerating(true);
@@ -315,17 +319,19 @@ export default function App() {
       );
 
     try {
-      const serverHistory = chatHistory.slice(-10).map((m) => ({ role: m.role, text: m.text }));
+      // Deep requests go with a clean history: the notebook is self-contained,
+      // and a history-free request is cacheable, so one student's notebook
+      // becomes every student's instant notebook.
+      const serverHistory = deep ? [] : chatHistory.slice(-10).map((m) => ({ role: m.role, text: m.text }));
       const images = atts.map((a) => ({ data: dataUrlToBase64(a.dataUrl), mimeType: a.mimeType }));
       const baseBody = {
         message: text,
         history: serverHistory,
-        mode: studyMode,
         board: profile.board,
         grade: profile.grade,
         language: profile.language,
         preferredAnalogy: profile.preferredAnalogy,
-        deepVerify,
+        deep,
         images
       };
 
@@ -343,7 +349,7 @@ export default function App() {
       // server would just answer "fallback" while charging a rate-limit token.
       // (Auto-routed search from Standard is still caught server-side.)
       let streamResult: Awaited<ReturnType<typeof api.chatStream>> | null = null;
-      if (images.length === 0 && studyMode !== "search") {
+      if (images.length === 0) {
         try {
           streamResult = await api.chatStream(
             baseBody,
@@ -358,7 +364,6 @@ export default function App() {
                   role: "model",
                   text: chunk,
                   timestamp: new Date().toLocaleTimeString(),
-                  mode: studyMode,
                   streaming: true
                 };
                 return [...prev, bubble];
@@ -378,7 +383,6 @@ export default function App() {
           role: "model",
           text: streamResult.text,
           timestamp: new Date().toLocaleTimeString(),
-          mode: studyMode,
           sources: streamResult.sources || [],
           verification: streamResult.verification
         });
@@ -395,7 +399,6 @@ export default function App() {
           role: "model",
           text: data.text,
           timestamp: new Date().toLocaleTimeString(),
-          mode: studyMode,
           sources: data.sources || [],
           verification: data.verification
         });
@@ -476,7 +479,7 @@ export default function App() {
     setChapters((prev) => [newCh, ...prev]);
     setNewChapterName("");
     setIsAddingChapter(false);
-    handleSendMessage(`Let's study the new chapter: "${newCh.name}". Can you start with a short diagnostic check to gauge my level?`);
+    handleSendMessage(`Teach me "${newCh.name}" in depth.`, { deep: true });
   };
 
   const handleUpdateMastery = (id: string, newMastery: "weak" | "developing" | "strong") => {
@@ -622,6 +625,43 @@ export default function App() {
     setMobileView("chat");
   };
 
+  // The user question a model answer replied to (feeds deep dives and checks).
+  // Skips the one-tap "still fuzzy" signal so a deep dive lands on the real topic.
+  const questionBefore = (idx: number): string => {
+    for (let i = idx - 1; i >= 0; i--) {
+      const m = chatHistory[i];
+      if (m.role === "user" && m.text.trim() && m.text !== STILL_CONFUSED_PROMPT) return m.text;
+    }
+    return chatHistory[idx]?.text.slice(0, 200) || "";
+  };
+
+  // Deep understanding applies to teaching answers that are not already the
+  // notebook and not live-search results.
+  const canGoDeep = (message: ChatMessage): boolean =>
+    message.text.length > 200 &&
+    !(message.sources && message.sources.length > 0) &&
+    parseTeachingSections(message.text).sections.length === 0;
+
+  // ---- On-demand Deep-check: examiner pass over an existing answer ----
+  const handleDeepCheck = async (msg: ChatMessage, question: string) => {
+    if (!activeId || isGenerating) return;
+    const convId = activeId;
+    setChatHistory((prev) => prev.map((m) => (m.id === msg.id ? { ...m, verification: "checking" } : m)));
+    try {
+      const data = await api.deepCheck({ question, text: msg.text });
+      if (activeIdRef.current === convId) {
+        setChatHistory((prev) => prev.map((m) => (m.id === msg.id ? { ...m, text: data.text, verification: data.verification } : m)));
+      }
+      // Re-save under the same id so the study log keeps the corrected answer.
+      api.addMessage(convId, { id: msg.id, role: "model", text: data.text, sources: msg.sources || [] }).catch(() => {});
+    } catch (e) {
+      console.error("Deep-check failed:", e);
+      if (activeIdRef.current === convId) {
+        setChatHistory((prev) => prev.map((m) => (m.id === msg.id ? { ...m, verification: "unavailable" } : m)));
+      }
+    }
+  };
+
   const renderMessageContent = (message: ChatMessage) => {
     // While a draft is streaming in, render it as plain markdown; the tabbed
     // notebook appears once the final answer lands (no mid-stream reshuffle),
@@ -674,30 +714,6 @@ export default function App() {
       </Suspense>
     );
   }
-
-  const MODES: { key: StudyMode; label: string; icon: React.ReactNode; title: string; desc: string }[] = [
-    {
-      key: "standard",
-      label: "Standard",
-      icon: <Sparkles size={13} />,
-      title: "Standard: warm explanations",
-      desc: "Your everyday default. Best for understanding new concepts, clear step-by-step explanations with analogies, and general doubt-solving. Fast and conversational."
-    },
-    {
-      key: "thinking",
-      label: "Thinking",
-      icon: <Brain size={13} />,
-      title: "Thinking: deep reasoning",
-      desc: "Use for hard, multi-step problems such as maths derivations, numericals, and tricky JEE/NEET questions where careful step-by-step reasoning matters most."
-    },
-    {
-      key: "search",
-      label: "Search",
-      icon: <Search size={13} />,
-      title: "Search: live web facts",
-      desc: "Use when you need up-to-date information such as current events, latest data, or recent exam patterns. Answers are grounded with Google Search sources."
-    }
-  ];
 
   return (
     <div className="h-[100dvh] bg-editorial-ivory text-editorial-charcoal font-sans flex flex-col antialiased">
@@ -856,7 +872,7 @@ export default function App() {
                   {chapters.map((ch) => (
                     <div
                       key={ch.id}
-                      onClick={() => selectSuggestedPrompt(`Explain the concept of "${ch.name}". Start with a short diagnostic check to gauge my level.`)}
+                      onClick={() => handleSendMessage(`Teach me "${ch.name}" in depth.`, { deep: true })}
                       className="group bg-white border border-editorial-line-light p-3 rounded-xl flex flex-col gap-2 hover:border-editorial-sage/40 transition-all cursor-pointer relative"
                     >
                       <div className="flex justify-between items-start gap-1">
@@ -897,75 +913,6 @@ export default function App() {
 
         {/* RIGHT: Chat panel */}
         <main className={`${mobileView === "chat" ? "flex" : "hidden"} lg:flex flex-1 min-h-0 flex-col bg-white/40 p-3 md:p-6 overflow-hidden`}>
-
-          {/* Slim toolbar */}
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <div className="flex bg-editorial-stone/50 p-1 rounded-full border border-editorial-line-light">
-              {MODES.map((m) => (
-                <HoverCard key={m.key} openDelay={120} closeDelay={60}>
-                  <HoverCardTrigger asChild>
-                    <button
-                      onClick={() => setStudyMode(m.key)}
-                      aria-label={`${m.title}. ${m.desc}`}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                        studyMode === m.key ? "bg-white text-editorial-charcoal shadow-sm border border-editorial-line" : "text-editorial-charcoal/50 hover:text-editorial-charcoal"
-                      }`}
-                      id={`mode-${m.key}`}
-                    >
-                      {m.icon}
-                      {m.label}
-                    </button>
-                  </HoverCardTrigger>
-                  <HoverCardContent align="start">
-                    <div className="flex items-center gap-2 mb-1.5 text-editorial-sage">
-                      {m.icon}
-                      <span className="text-sm font-semibold text-editorial-charcoal">{m.title}</span>
-                    </div>
-                    <p className="text-xs text-editorial-charcoal/70 leading-relaxed">{m.desc}</p>
-                  </HoverCardContent>
-                </HoverCard>
-              ))}
-            </div>
-
-            <div className="flex-1" />
-
-            <HoverCard openDelay={120} closeDelay={60}>
-              <HoverCardTrigger asChild>
-                <button
-                  onClick={() => setDeepVerify((v) => !v)}
-                  aria-label="Deep-check: a second examiner pass that double-checks facts and calculations before answering. Slower, best for important problems where accuracy is critical."
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                    deepVerify ? "bg-editorial-sage text-white border-editorial-sage" : "bg-white text-editorial-charcoal/60 border-editorial-line hover:bg-editorial-stone"
-                  }`}
-                  id="btn-deepverify"
-                >
-                  <CheckCircle2 size={13} />
-                  Deep-check
-                </button>
-              </HoverCardTrigger>
-              <HoverCardContent align="end">
-                <div className="flex items-center gap-2 mb-1.5 text-editorial-sage">
-                  <CheckCircle2 size={14} />
-                  <span className="text-sm font-semibold text-editorial-charcoal">Deep-check: examiner pass</span>
-                </div>
-                <p className="text-xs text-editorial-charcoal/70 leading-relaxed">
-                  Adds a second "examiner" pass that double-checks facts and calculations before answering. Slower, but best for important problems where accuracy is critical.
-                </p>
-              </HoverCardContent>
-            </HoverCard>
-
-            <button
-              onClick={isLiveActive ? stopLiveSession : startLiveSession}
-              title="Talk to Clarify.AI with your voice"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                isLiveActive ? "bg-red-800 text-white border-red-800" : "bg-white text-editorial-charcoal/60 border-editorial-line hover:bg-editorial-stone"
-              }`}
-              id="btn-voice"
-            >
-              {isLiveActive ? <MicOff size={13} /> : <Mic size={13} />}
-              {isLiveActive ? "Stop" : "Voice"}
-            </button>
-          </div>
 
           {/* Live status strip */}
           {isLiveActive && (
@@ -1010,7 +957,7 @@ export default function App() {
               </div>
             )}
 
-            {chatHistory.map((message) => (
+            {chatHistory.map((message, msgIdx) => (
               <div key={message.id} className={`flex flex-col max-w-[92%] md:max-w-[85%] ${message.role === "user" ? "self-end items-end" : "self-start items-start"}`}>
                 <div className="flex items-center gap-2 mb-1 text-[10px] text-editorial-charcoal/40">
                   <span>{message.role === "user" ? "You" : "Clarify.AI"}</span>
@@ -1086,23 +1033,44 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Action row: stay-until-it-clicks re-explain + Listen */}
+                  {/* Action row: simpler, deeper, checked, or heard. */}
                   {message.role === "model" && message.text && !message.streaming && (
-                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-editorial-line-light pt-2.5">
-                      {/* One-tap "still fuzzy", only on teaching-length replies, not greetings/errors */}
-                      {message.text.length > 200 ? (
-                        <button
-                          onClick={() => handleSendMessage(STILL_CONFUSED_PROMPT)}
-                          disabled={isGenerating}
-                          className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-sage border border-editorial-line-light disabled:opacity-40"
-                          id={`btn-reexplain-${message.id}`}
-                          title="Explain it again, a different way, as many times as you need"
-                        >
-                          <Sparkles size={12} /> Still fuzzy? Explain differently
-                        </button>
-                      ) : (
-                        <span />
-                      )}
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-editorial-line-light pt-2.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {message.text.length > 200 && (
+                          <button
+                            onClick={() => handleSendMessage(STILL_CONFUSED_PROMPT)}
+                            disabled={isGenerating}
+                            className={ACTION_PILL}
+                            id={`btn-reexplain-${message.id}`}
+                            title="Explain it again, a different way, as many times as you need"
+                          >
+                            <Sparkles size={12} /> Still fuzzy?
+                          </button>
+                        )}
+                        {canGoDeep(message) && (
+                          <button
+                            onClick={() => handleSendMessage(questionBefore(msgIdx), { deep: true, silent: true })}
+                            disabled={isGenerating}
+                            className={ACTION_PILL}
+                            id={`btn-deepdive-${message.id}`}
+                            title="Open the full study view: the exam-ready answer plus the nine-part notebook"
+                          >
+                            <BookOpen size={12} /> Deep understanding
+                          </button>
+                        )}
+                        {message.text.length > 200 && message.verification !== "passed" && message.verification !== "checking" && (
+                          <button
+                            onClick={() => handleDeepCheck(message, questionBefore(msgIdx))}
+                            disabled={isGenerating}
+                            className={ACTION_PILL}
+                            id={`btn-deepcheck-${message.id}`}
+                            title="A second examiner pass double-checks the facts and calculations in this answer"
+                          >
+                            <CheckCircle2 size={12} /> Deep-check
+                          </button>
+                        )}
+                      </div>
                       <button
                         onClick={() => handleSpeak(message.id, message.text)}
                         className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all ${
@@ -1181,6 +1149,19 @@ export default function App() {
               disabled={isGenerating}
               id="input-chat"
             />
+            <button
+              onClick={isLiveActive ? stopLiveSession : startLiveSession}
+              title={isLiveActive ? "Stop the voice session" : "Talk to Clarify.AI with your voice"}
+              aria-label={isLiveActive ? "Stop the voice session" : "Talk to Clarify.AI with your voice"}
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors shrink-0 cursor-pointer ${
+                isLiveActive
+                  ? "bg-red-800 text-white hover:bg-red-700"
+                  : "text-editorial-charcoal/50 hover:bg-editorial-stone hover:text-editorial-sage"
+              }`}
+              id="btn-voice"
+            >
+              {isLiveActive ? <MicOff size={18} /> : <Mic size={18} />}
+            </button>
             <button
               onClick={() => handleSendMessage()}
               className="w-10 h-10 bg-editorial-sage hover:bg-editorial-sage/90 text-white rounded-full flex items-center justify-center transition-colors shrink-0 disabled:bg-editorial-stone disabled:text-editorial-charcoal/30 cursor-pointer"

@@ -12,7 +12,7 @@ const ROWS = [
   },
   {
     title: "Deep-check, a second examiner",
-    body: "Flip one switch and a second examiner pass double-checks the facts and calculations in the answer. Slower, and worth it for the questions that matter.",
+    body: "One tap under any answer sends it to a second examiner pass that double-checks its facts and calculations. Slower, and worth it for the answers that matter.",
     chip: true,
   },
   {
