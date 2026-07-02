@@ -4,7 +4,7 @@
  * teacher down in exactly the right places. Ledger rows, not feature cards.
  */
 import { CheckCircle2 } from "lucide-react";
-import AmbientWords from "./AmbientWords";
+import WordStream from "./WordStream";
 
 const ROWS = [
   {
@@ -29,8 +29,8 @@ const ROWS = [
 export default function TruthSection() {
   return (
     <section className="relative overflow-hidden bg-editorial-stone px-4 py-20 md:px-8 md:py-28" aria-label="How Clarify.AI stays honest">
-      <AmbientWords variant={1} />
-      <div className="relative z-[1] mx-auto grid max-w-6xl items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
+      <WordStream tone="light" />
+      <div className="relative z-10 mx-auto grid max-w-6xl items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
         <div className="lg:sticky lg:top-16">
           <h2 className="landing-balance font-serif text-[clamp(2.1rem,5vw,3.25rem)] italic leading-tight tracking-[-0.01em] text-editorial-charcoal">
             It would rather be right than fast.

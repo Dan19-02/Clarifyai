@@ -12,6 +12,7 @@ import { motion, useScroll, useTransform, useReducedMotion } from "motion/react"
 import { ArrowDown } from "lucide-react";
 import { DRIFT_WORDS } from "./words";
 import { useStaticStart } from "./useStaticStart";
+import WordStream from "./WordStream";
 import type { AuthMode } from "./Landing";
 
 const NIGHT = "#15150e";
@@ -179,8 +180,9 @@ export default function NightAct({ onAuth }: NightActProps) {
       </section>
 
       {/* ---- The classroom, three beats ---- */}
-      <section aria-label="The classroom moment">
-        <motion.div {...fadeUp} className="flex min-h-[62svh] items-center justify-center px-6">
+      <section aria-label="The classroom moment" className="relative overflow-hidden">
+        <WordStream tone="dark" />
+        <motion.div {...fadeUp} className="relative z-10 flex min-h-[62svh] items-center justify-center px-6">
           <div className="max-w-2xl text-center">
             <p className="text-sm text-chalk-dim">Physics, second period.</p>
             <p className="landing-balance mt-4 font-serif text-[clamp(1.5rem,3.6vw,2.4rem)] italic leading-snug text-chalk">
@@ -189,13 +191,13 @@ export default function NightAct({ onAuth }: NightActProps) {
           </div>
         </motion.div>
 
-        <motion.div {...fadeUp} className="flex min-h-[62svh] items-center justify-center px-6">
+        <motion.div {...fadeUp} className="relative z-10 flex min-h-[62svh] items-center justify-center px-6">
           <p className="landing-balance max-w-2xl text-center font-serif text-[clamp(1.5rem,3.6vw,2.4rem)] italic leading-snug text-chalk">
             Half the class nods. You copy the words down, hoping they will make sense tonight.
           </p>
         </motion.div>
 
-        <motion.div {...fadeUp} className="flex min-h-[62svh] items-center justify-center px-6">
+        <motion.div {...fadeUp} className="relative z-10 flex min-h-[62svh] items-center justify-center px-6">
           <p className="landing-balance max-w-2xl text-center font-serif text-[clamp(1.5rem,3.6vw,2.4rem)] italic leading-snug text-chalk">
             And the old feeling reaches for you: the quiet panic of falling behind.
           </p>

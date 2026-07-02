@@ -21,60 +21,57 @@ export interface DriftWord {
 }
 
 /**
- * Faint school-blackboard phrases that drift behind the ivory story sections,
- * so the long scroll feels like a classroom, not an empty page. Kept low-opacity
- * and pushed toward the margins so they never sit under body text. Formulas use
+ * A continuous river of real school phrases and formulas that flows left to
+ * right behind every story section, so the long scroll feels like a classroom,
+ * not an empty page. Each lane is one horizontal marquee row. Formulas use
  * ASCII math only (no em/en dashes, per the app-wide rule).
  */
-export interface AmbientWord {
-  text: string;
+export interface WordLane {
+  words: string[];
+  /** Vertical position within the section (percent). */
   top: string;
-  left: string;
+  /** Font size for this lane. */
   size: string;
+  /** Base opacity (the component nudges it up on light sections). */
   opacity: number;
+  /** One full loop duration; bigger = slower. */
   dur: string;
-  delay: string;
-  dx: string;
-  dy: string;
-  rot: string;
+  /** Hidden on phones to keep the mobile background calm. */
   desktopOnly?: boolean;
 }
 
-// Three scatter sets so adjacent sections never show the same words. Each hugs
-// the edges and corners, leaving the reading column clear.
-export const AMBIENT_SETS: AmbientWord[][] = [
-  [
-    { text: "F = ma", top: "8%", left: "4%", size: "1.5rem", opacity: 0.12, dur: "21s", delay: "0s", dx: "16px", dy: "-12px", rot: "-3deg" },
-    { text: "sin²θ + cos²θ = 1", top: "20%", left: "80%", size: "1.1rem", opacity: 0.10, dur: "25s", delay: "-7s", dx: "-14px", dy: "14px", rot: "2deg", desktopOnly: true },
-    { text: "photosynthesis", top: "52%", left: "2%", size: "1.25rem", opacity: 0.12, dur: "23s", delay: "-4s", dx: "14px", dy: "16px", rot: "1deg", desktopOnly: true },
-    { text: "V = IR", top: "74%", left: "86%", size: "1.6rem", opacity: 0.12, dur: "19s", delay: "-11s", dx: "-18px", dy: "-12px", rot: "-2deg" },
-    { text: "Le Chatelier's principle", top: "88%", left: "8%", size: "1rem", opacity: 0.10, dur: "27s", delay: "-3s", dx: "12px", dy: "-14px", rot: "1.5deg", desktopOnly: true },
-    { text: "dy/dx", top: "40%", left: "92%", size: "1.4rem", opacity: 0.12, dur: "20s", delay: "-9s", dx: "-12px", dy: "12px", rot: "-1deg", desktopOnly: true },
-  ],
-  [
-    { text: "PV = nRT", top: "10%", left: "84%", size: "1.5rem", opacity: 0.12, dur: "22s", delay: "-2s", dx: "-16px", dy: "14px", rot: "2deg" },
-    { text: "the water cycle", top: "26%", left: "3%", size: "1.15rem", opacity: 0.10, dur: "26s", delay: "-8s", dx: "16px", dy: "-12px", rot: "-1.5deg", desktopOnly: true },
-    { text: "b² - 4ac", top: "58%", left: "90%", size: "1.5rem", opacity: 0.12, dur: "18s", delay: "-5s", dx: "-14px", dy: "-16px", rot: "-2deg" },
-    { text: "mitochondria", top: "70%", left: "5%", size: "1.2rem", opacity: 0.12, dur: "24s", delay: "-12s", dx: "14px", dy: "12px", rot: "1deg", desktopOnly: true },
-    { text: "electronegativity", top: "44%", left: "1%", size: "1.05rem", opacity: 0.10, dur: "28s", delay: "-6s", dx: "12px", dy: "-10px", rot: "0.5deg", desktopOnly: true },
-    { text: "v = u + at", top: "90%", left: "70%", size: "1.35rem", opacity: 0.12, dur: "21s", delay: "-10s", dx: "-16px", dy: "12px", rot: "-1deg", desktopOnly: true },
-  ],
-  [
-    { text: "E = mc²", top: "9%", left: "6%", size: "1.6rem", opacity: 0.12, dur: "20s", delay: "-3s", dx: "16px", dy: "-14px", rot: "-2deg" },
-    { text: "∫ sec²x dx", top: "22%", left: "82%", size: "1.3rem", opacity: 0.12, dur: "24s", delay: "-9s", dx: "-14px", dy: "12px", rot: "1.5deg", desktopOnly: true },
-    { text: "Mendel's F₂ ratio", top: "56%", left: "3%", size: "1.1rem", opacity: 0.10, dur: "27s", delay: "-5s", dx: "14px", dy: "14px", rot: "1deg", desktopOnly: true },
-    { text: "pH = -log[H⁺]", top: "72%", left: "84%", size: "1.4rem", opacity: 0.12, dur: "19s", delay: "-12s", dx: "-16px", dy: "-12px", rot: "-1.5deg" },
-    { text: "Pythagoras theorem", top: "40%", left: "90%", size: "1rem", opacity: 0.10, dur: "26s", delay: "-7s", dx: "-12px", dy: "10px", rot: "0.5deg", desktopOnly: true },
-    { text: "6.022 × 10²³", top: "88%", left: "10%", size: "1.35rem", opacity: 0.12, dur: "22s", delay: "-2s", dx: "12px", dy: "-12px", rot: "2deg", desktopOnly: true },
-  ],
-  [
-    { text: "λ = h/p", top: "9%", left: "5%", size: "1.5rem", opacity: 0.12, dur: "21s", delay: "-4s", dx: "16px", dy: "-12px", rot: "-2deg" },
-    { text: "the periodic table", top: "24%", left: "82%", size: "1.1rem", opacity: 0.10, dur: "25s", delay: "-8s", dx: "-14px", dy: "12px", rot: "1.5deg", desktopOnly: true },
-    { text: "a² + b² = c²", top: "70%", left: "88%", size: "1.55rem", opacity: 0.12, dur: "18s", delay: "-6s", dx: "-16px", dy: "-14px", rot: "-1.5deg" },
-    { text: "osmosis", top: "54%", left: "3%", size: "1.25rem", opacity: 0.12, dur: "24s", delay: "-11s", dx: "14px", dy: "14px", rot: "1deg", desktopOnly: true },
-    { text: "moment of inertia", top: "42%", left: "1%", size: "1rem", opacity: 0.10, dur: "28s", delay: "-3s", dx: "12px", dy: "-10px", rot: "0.5deg", desktopOnly: true },
-    { text: "Newton's laws", top: "88%", left: "72%", size: "1.3rem", opacity: 0.10, dur: "22s", delay: "-9s", dx: "-14px", dy: "12px", rot: "2deg", desktopOnly: true },
-  ],
+// Seven lanes at different heights, sizes, and speeds. Each carries a distinct
+// mix of subjects so no two rows read alike. Word lists are long so a single
+// strip is wider than any viewport (seamless loop, no gaps).
+export const WORD_LANES: WordLane[] = [
+  {
+    top: "5%", size: "1.5rem", opacity: 0.13, dur: "82s",
+    words: ["rate of change of momentum", "F = ma", "electronegativity", "photosynthesis", "sin²θ + cos²θ = 1", "the Krebs cycle", "V = IR", "Le Chatelier's principle", "dy/dx", "escape velocity", "the water cycle", "b² - 4ac"],
+  },
+  {
+    top: "18%", size: "1.05rem", opacity: 0.11, dur: "104s", desktopOnly: true,
+    words: ["mitochondria", "PV = nRT", "the quadratic formula", "projectile motion", "valency of carbon", "a² + b² = c²", "natural selection", "∫ sec²x dx", "half-life", "the periodic table", "moment of inertia", "log(ab) = log a + log b"],
+  },
+  {
+    top: "31%", size: "1.7rem", opacity: 0.14, dur: "72s",
+    words: ["E = mc²", "Mendel's F₂ ratio", "simple harmonic motion", "pH = -log[H⁺]", "the French Revolution", "covalent bond", "Pythagoras theorem", "v = u + at", "osmosis", "angular momentum", "6.022 × 10²³", "past perfect tense"],
+  },
+  {
+    top: "44%", size: "1.1rem", opacity: 0.11, dur: "118s", desktopOnly: true,
+    words: ["Newton's laws", "λ = h/p", "phloem and xylem", "arithmetic progression", "oxidation state", "the Doppler effect", "supply and demand", "chlorophyll", "matrices and determinants", "sp³ hybridisation", "tectonic plates", "work done by a force"],
+  },
+  {
+    top: "58%", size: "1.55rem", opacity: 0.13, dur: "88s",
+    words: ["photosynthesis", "P = VI", "the nephron", "sin²θ + cos²θ = 1", "Avogadro's number", "centre of mass", "DNA replication", "latitude and longitude", "the quadratic formula", "benzene ring", "F = dp/dt", "the Preamble"],
+  },
+  {
+    top: "71%", size: "1.05rem", opacity: 0.11, dur: "110s", desktopOnly: true,
+    words: ["valency of carbon", "nCr", "escape velocity", "the Krebs cycle", "V = IR", "quadratic equations", "electronegativity", "meiosis and mitosis", "moment of inertia", "the water cycle", "∫ sec²x dx", "Ohm's law"],
+  },
+  {
+    top: "84%", size: "1.5rem", opacity: 0.13, dur: "76s",
+    words: ["rate of change of momentum", "b² - 4ac", "mitochondria", "PV = nRT", "Le Chatelier's principle", "a² + b² = c²", "projectile motion", "pH = -log[H⁺]", "natural selection", "E = mc²", "the periodic table", "dy/dx"],
+  },
 ];
 
 export const DRIFT_WORDS: DriftWord[] = [

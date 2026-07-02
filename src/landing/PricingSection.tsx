@@ -3,7 +3,7 @@
  * wears the night palette: the story's darkness, now owned.
  */
 import type { AuthMode } from "./Landing";
-import AmbientWords from "./AmbientWords";
+import WordStream from "./WordStream";
 
 interface PricingSectionProps {
   onAuth: (mode: AuthMode) => void;
@@ -44,8 +44,8 @@ const INCLUDED = [
 export default function PricingSection({ onAuth }: PricingSectionProps) {
   return (
     <section id="pricing" className="relative overflow-hidden border-t border-editorial-line bg-editorial-ivory px-4 py-20 md:px-8 md:py-28" aria-label="Pricing">
-      <AmbientWords variant={3} />
-      <div className="relative z-[1] mx-auto max-w-5xl">
+      <WordStream tone="light" />
+      <div className="relative z-10 mx-auto max-w-5xl">
         <div className="max-w-2xl">
           <h2 className="landing-balance font-serif text-[clamp(2.1rem,5vw,3.25rem)] italic leading-tight tracking-[-0.01em] text-editorial-charcoal">
             Priced like a notebook, not a coaching class.

@@ -6,7 +6,7 @@
  */
 import { Camera, Mic, Compass } from "lucide-react";
 import { REAL_VOICES } from "./realAnswer";
-import AmbientWords from "./AmbientWords";
+import WordStream from "./WordStream";
 
 const BOARDS = ["CBSE", "ICSE", "State Board", "JEE", "NEET", "General Study"];
 
@@ -31,8 +31,8 @@ const WAYS = [
 export default function EveryStudentSection() {
   return (
     <section className="relative overflow-hidden bg-editorial-ivory px-4 py-20 md:px-8 md:py-28" aria-label="Made for every Indian classroom">
-      <AmbientWords variant={2} />
-      <div className="relative z-[1] mx-auto max-w-6xl">
+      <WordStream tone="light" />
+      <div className="relative z-10 mx-auto max-w-6xl">
         <div className="max-w-2xl">
           <h2 className="landing-balance font-serif text-[clamp(2.1rem,5vw,3.25rem)] italic leading-tight tracking-[-0.01em] text-editorial-charcoal">
             It knows which classroom you sit in.
