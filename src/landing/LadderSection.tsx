@@ -9,7 +9,7 @@ import { Sparkles } from "lucide-react";
 import { Markdown } from "../Markdown";
 import { REAL_REEXPLANATION, REAL_STILL_FUZZY_PROMPT } from "./realAnswer";
 import { useStaticStart } from "./useStaticStart";
-import WordStream from "./WordStream";
+import ScatterWords from "./ScatterWords";
 
 const RUNGS = [
   {
@@ -41,7 +41,7 @@ export default function LadderSection() {
 
   return (
     <section id="how" className="relative overflow-hidden bg-editorial-ivory px-4 py-20 md:px-8 md:py-28" aria-label="How Clarify.AI stays until it lands">
-      <WordStream tone="light" />
+      <ScatterWords tone="light" />
       <div className="relative z-10 mx-auto max-w-6xl">
         <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-20">
           {/* The pitch + the button */}

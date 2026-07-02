@@ -49,19 +49,3 @@
   .landing-drift { animation: none !important; }
 }
 
-/* Continuous river of school words flowing left to right behind every story
-   section. Each lane holds the same strip twice; translating by exactly one
-   strip (-50%) loops seamlessly. Pure CSS + transform, GPU-composited. */
-@keyframes wordstream {
-  from { transform: translate3d(-50%, 0, 0); }
-  to   { transform: translate3d(0, 0, 0); }
-}
-.wordstream-lane {
-  animation: wordstream var(--dur, 90s) linear infinite;
-  will-change: transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wordstream-lane { animation: none !important; transform: translate3d(-25%, 0, 0); }
-}
-

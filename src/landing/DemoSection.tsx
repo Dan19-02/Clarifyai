@@ -9,14 +9,14 @@ import { parseTeachingSections } from "../utils";
 import { Markdown } from "../Markdown";
 import { NotebookViewer } from "../NotebookViewer";
 import { REAL_QUESTION, REAL_ANSWER } from "./realAnswer";
-import WordStream from "./WordStream";
+import ScatterWords from "./ScatterWords";
 
 const parsed = parseTeachingSections(REAL_ANSWER);
 
 export default function DemoSection() {
   return (
     <section id="watch" className="relative overflow-hidden bg-editorial-ivory px-4 py-20 md:px-8 md:py-28" aria-label="A real answer from Clarify.AI">
-      <WordStream tone="light" />
+      <ScatterWords tone="light" />
       <div className="relative z-10 mx-auto max-w-5xl">
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <h2 className="landing-balance font-serif text-[clamp(2.1rem,5vw,3.25rem)] italic leading-tight tracking-[-0.01em] text-editorial-charcoal">

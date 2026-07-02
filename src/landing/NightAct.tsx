@@ -12,7 +12,7 @@ import { motion, useScroll, useTransform, useReducedMotion } from "motion/react"
 import { ArrowDown } from "lucide-react";
 import { DRIFT_WORDS } from "./words";
 import { useStaticStart } from "./useStaticStart";
-import WordStream from "./WordStream";
+import ScatterWords from "./ScatterWords";
 import type { AuthMode } from "./Landing";
 
 const NIGHT = "#15150e";
@@ -181,7 +181,7 @@ export default function NightAct({ onAuth }: NightActProps) {
 
       {/* ---- The classroom, three beats ---- */}
       <section aria-label="The classroom moment" className="relative overflow-hidden">
-        <WordStream tone="dark" />
+        <ScatterWords tone="dark" />
         <motion.div {...fadeUp} className="relative z-10 flex min-h-[62svh] items-center justify-center px-6">
           <div className="max-w-2xl text-center">
             <p className="text-sm text-chalk-dim">Physics, second period.</p>

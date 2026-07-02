@@ -21,57 +21,63 @@ export interface DriftWord {
 }
 
 /**
- * A continuous river of real school phrases and formulas that flows left to
- * right behind every story section, so the long scroll feels like a classroom,
- * not an empty page. Each lane is one horizontal marquee row. Formulas use
- * ASCII math only (no em/en dashes, per the app-wide rule).
+ * Static scattered school phrases behind the story sections, in the same
+ * spirit as the hero: no movement, just calm words in the empty space. Placed
+ * so they never overlap the reading content. Formulas use ASCII math only (no
+ * em/en dashes, per the app-wide rule).
+ *
+ * `show` is a visibility floor so a word only appears when there is room for
+ * it: undefined = always; "lg" = tablets and up; "2xl" = only very wide
+ * screens (used for side-edge words, which need generous margins to clear the
+ * centered content column at every width).
  */
-export interface WordLane {
-  words: string[];
-  /** Vertical position within the section (percent). */
-  top: string;
-  /** Font size for this lane. */
+export interface ScatterWord {
+  text: string;
+  /** Use `top` OR `bottom`. Padding-band words use a small px offset (e.g.
+   *  "28px") so they stay in the section's empty padding at any height. */
+  top?: string;
+  bottom?: string;
+  left: string;
   size: string;
-  /** Base opacity (the component nudges it up on light sections). */
   opacity: number;
-  /** One full loop duration; bigger = slower. */
-  dur: string;
-  /** Hidden on phones to keep the mobile background calm. */
-  desktopOnly?: boolean;
+  rot: string;
+  show?: "lg" | "2xl";
 }
 
-// Seven lanes at different heights, sizes, and speeds. Each carries a distinct
-// mix of subjects so no two rows read alike. Word lists are long so a single
-// strip is wider than any viewport (seamless loop, no gaps).
-export const WORD_LANES: WordLane[] = [
-  {
-    top: "5%", size: "1.5rem", opacity: 0.13, dur: "82s",
-    words: ["rate of change of momentum", "F = ma", "electronegativity", "photosynthesis", "sin²θ + cos²θ = 1", "the Krebs cycle", "V = IR", "Le Chatelier's principle", "dy/dx", "escape velocity", "the water cycle", "b² - 4ac"],
-  },
-  {
-    top: "18%", size: "1.05rem", opacity: 0.11, dur: "104s", desktopOnly: true,
-    words: ["mitochondria", "PV = nRT", "the quadratic formula", "projectile motion", "valency of carbon", "a² + b² = c²", "natural selection", "∫ sec²x dx", "half-life", "the periodic table", "moment of inertia", "log(ab) = log a + log b"],
-  },
-  {
-    top: "31%", size: "1.7rem", opacity: 0.14, dur: "72s",
-    words: ["E = mc²", "Mendel's F₂ ratio", "simple harmonic motion", "pH = -log[H⁺]", "the French Revolution", "covalent bond", "Pythagoras theorem", "v = u + at", "osmosis", "angular momentum", "6.022 × 10²³", "past perfect tense"],
-  },
-  {
-    top: "44%", size: "1.1rem", opacity: 0.11, dur: "118s", desktopOnly: true,
-    words: ["Newton's laws", "λ = h/p", "phloem and xylem", "arithmetic progression", "oxidation state", "the Doppler effect", "supply and demand", "chlorophyll", "matrices and determinants", "sp³ hybridisation", "tectonic plates", "work done by a force"],
-  },
-  {
-    top: "58%", size: "1.55rem", opacity: 0.13, dur: "88s",
-    words: ["photosynthesis", "P = VI", "the nephron", "sin²θ + cos²θ = 1", "Avogadro's number", "centre of mass", "DNA replication", "latitude and longitude", "the quadratic formula", "benzene ring", "F = dp/dt", "the Preamble"],
-  },
-  {
-    top: "71%", size: "1.05rem", opacity: 0.11, dur: "110s", desktopOnly: true,
-    words: ["valency of carbon", "nCr", "escape velocity", "the Krebs cycle", "V = IR", "quadratic equations", "electronegativity", "meiosis and mitosis", "moment of inertia", "the water cycle", "∫ sec²x dx", "Ohm's law"],
-  },
-  {
-    top: "84%", size: "1.5rem", opacity: 0.13, dur: "76s",
-    words: ["rate of change of momentum", "b² - 4ac", "mitochondria", "PV = nRT", "Le Chatelier's principle", "a² + b² = c²", "projectile motion", "pH = -log[H⁺]", "natural selection", "E = mc²", "the periodic table", "dy/dx"],
-  },
+// Dark story sections (the classroom beats): short centered text with a large
+// empty canvas, so words scatter freely at the sides and in the vertical gaps
+// between beats, hero-style. Chalk on night.
+export const DARK_SCATTER: ScatterWord[] = [
+  { text: "F = dp/dt", top: "7%", left: "6%", size: "1.6rem", opacity: 0.2, rot: "-3deg" },
+  { text: "electronegativity", top: "9%", left: "79%", size: "1.1rem", opacity: 0.16, rot: "2deg", show: "lg" },
+  { text: "projectile motion", top: "25%", left: "9%", size: "1.3rem", opacity: 0.18, rot: "-1deg", show: "lg" },
+  { text: "sin²θ + cos²θ = 1", top: "30%", left: "70%", size: "1.35rem", opacity: 0.18, rot: "1deg" },
+  { text: "mitochondria", top: "42%", left: "5%", size: "1.15rem", opacity: 0.16, rot: "1.5deg", show: "lg" },
+  { text: "∫ sec²x dx", top: "47%", left: "86%", size: "1.5rem", opacity: 0.2, rot: "-2deg" },
+  { text: "Le Chatelier's principle", top: "58%", left: "7%", size: "1.05rem", opacity: 0.15, rot: "1deg", show: "lg" },
+  { text: "V = IR", top: "63%", left: "81%", size: "1.7rem", opacity: 0.2, rot: "-1.5deg" },
+  { text: "Mendel's F₂ ratio", top: "76%", left: "6%", size: "1.15rem", opacity: 0.16, rot: "2deg", show: "lg" },
+  { text: "valency of carbon", top: "82%", left: "80%", size: "1.15rem", opacity: 0.15, rot: "-1deg", show: "lg" },
+  { text: "b² - 4ac", top: "91%", left: "16%", size: "1.5rem", opacity: 0.18, rot: "1deg" },
+];
+
+// Light content sections: content lives in the middle, so words sit in the top
+// and bottom padding bands (safe at every width) plus the far side margins on
+// very wide screens only. Charcoal on ivory, kept clear of all reading text.
+export const LIGHT_SCATTER: ScatterWord[] = [
+  // top band: fixed px keeps them inside the empty top padding above the heading.
+  { text: "electronegativity", top: "26px", left: "5%", size: "1.15rem", opacity: 0.18, rot: "-2deg" },
+  { text: "the water cycle", top: "32px", left: "40%", size: "1.05rem", opacity: 0.16, rot: "1.5deg", show: "lg" },
+  { text: "Le Chatelier's principle", top: "24px", left: "67%", size: "1.05rem", opacity: 0.17, rot: "-1deg" },
+  // bottom band: fixed px keeps them inside the empty bottom padding below content.
+  { text: "Pythagoras theorem", bottom: "30px", left: "8%", size: "1.1rem", opacity: 0.17, rot: "1deg" },
+  { text: "mitochondria", bottom: "26px", left: "45%", size: "1.2rem", opacity: 0.18, rot: "-1.5deg", show: "lg" },
+  { text: "6.022 × 10²³", bottom: "34px", left: "70%", size: "1.15rem", opacity: 0.17, rot: "1.5deg" },
+  // side margins, only where the screen is wide enough to clear the content column.
+  { text: "F = ma", top: "33%", left: "2%", size: "1.6rem", opacity: 0.19, rot: "-3deg", show: "2xl" },
+  { text: "dy/dx", top: "70%", left: "2.5%", size: "1.45rem", opacity: 0.18, rot: "1deg", show: "2xl" },
+  { text: "V = IR", top: "26%", left: "94%", size: "1.6rem", opacity: 0.19, rot: "2deg", show: "2xl" },
+  { text: "E = mc²", top: "60%", left: "93.5%", size: "1.55rem", opacity: 0.19, rot: "-1deg", show: "2xl" },
 ];
 
 export const DRIFT_WORDS: DriftWord[] = [
