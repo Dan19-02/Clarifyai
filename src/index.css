@@ -12,5 +12,40 @@
   --color-editorial-stone: #F4F4F0;
   --color-editorial-line: rgba(26, 26, 26, 0.1);
   --color-editorial-line-light: rgba(26, 26, 26, 0.05);
+
+  /* Landing "night" palette: the dark classroom the story opens in.
+     Warm olive-cast darks so the night and the ivory day share one family. */
+  --color-night: #15150e;
+  --color-night-soft: #202016;
+  --color-night-line: rgba(240, 238, 226, 0.14);
+  --color-chalk: #f0eee2;
+  --color-chalk-dim: rgba(240, 238, 226, 0.62);
+  --color-sage-bright: #b9b98d;
+}
+
+/* Landing-only helpers */
+.landing-balance { text-wrap: balance; }
+.landing-pretty { text-wrap: pretty; }
+
+/* Long display equations scroll instead of stretching their bubble. */
+.clarify-prose .katex-display { overflow-x: auto; overflow-y: hidden; }
+
+/* The half-caught words drifting across the night classroom. Pure CSS so the
+   hero stays cheap on low-end phones. Each span sets its own --dx/--dy/--dur. */
+@keyframes landing-drift {
+  0%   { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
+  50%  { transform: translate3d(var(--dx, 14px), var(--dy, -20px), 0) rotate(var(--rot, 0deg)); }
+  100% { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
+}
+.landing-drift {
+  animation: landing-drift var(--dur, 18s) ease-in-out var(--delay, 0s) infinite;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-drift { animation: none !important; }
 }
 

@@ -23,6 +23,14 @@ export interface ChatMessage {
   attachments?: Attachment[];
   audioBase64?: string; // Cache generated TTS audio
   isPlayingAudio?: boolean;
+  /** Deep-check state for this answer (present only when it was requested):
+   *  "checking" = examiner reviewing the streamed draft (transient, client
+   *  only); "passed" = the examiner pass ran; "unavailable" = it could not
+   *  run, so the answer is shown unverified and the UI says so. */
+  verification?: "checking" | "passed" | "unavailable";
+  /** True while this bubble is receiving a live streamed draft (client only:
+   *  rendered as plain markdown, action buttons hidden until complete). */
+  streaming?: boolean;
 }
 
 /** A separate chat window / study session. */

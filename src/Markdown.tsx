@@ -59,6 +59,8 @@ function MermaidBlock({ chart }: { chart: string }) {
 
   return (
     <div
+      role="img"
+      aria-label="Concept flowchart drawn by Clarify.AI"
       className="my-3 flex justify-center overflow-x-auto rounded-xl border border-editorial-line-light bg-white p-3"
       dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
     >

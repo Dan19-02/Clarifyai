@@ -3,17 +3,31 @@
  * Sign-up collects the full student profile in one go; everything is editable
  * later in Study Preferences. Mobile-first, editorial theme.
  */
-import React, { useState } from "react";
-import { GraduationCap, ArrowRight, Loader2 } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { GraduationCap, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 
 const BOARDS = ["CBSE", "ICSE", "State Board", "JEE", "NEET", "None"];
 const LANGUAGES = ["English", "Hinglish", "Hindi"];
 const ANALOGIES = ["Daily Life", "Sports", "Cooking", "Bicycles & Trains", "Mobile Phones & Tech"];
 
-export default function Login() {
+interface LoginProps {
+  /** Which panel to open on: the landing page's CTAs deep-link to signup. */
+  initialMode?: "login" | "signup";
+  /** When set, shows a back control that returns to the landing page. */
+  onBack?: () => void;
+}
+
+export default function Login({ initialMode = "login", onBack }: LoginProps) {
   const { login, signup } = useAuth();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
+  const backRef = useRef<HTMLButtonElement | null>(null);
+
+  // Arriving from the landing page unmounts the element that was focused, so
+  // hand focus to the Back control to keep keyboard and screen-reader context.
+  useEffect(() => {
+    if (onBack) backRef.current?.focus();
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +77,17 @@ export default function Login() {
   const label = "text-[10px] uppercase tracking-[0.1em] font-bold text-editorial-sage";
 
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-editorial-ivory px-4 py-8 text-editorial-charcoal antialiased">
+    <div className="relative flex min-h-[100dvh] flex-col items-center justify-center bg-editorial-ivory px-4 py-8 text-editorial-charcoal antialiased">
+      {onBack && (
+        <button
+          ref={backRef}
+          onClick={onBack}
+          className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full border border-editorial-line bg-white px-3.5 py-2 text-xs text-editorial-charcoal/70 transition-colors hover:bg-editorial-stone focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-editorial-sage md:left-6 md:top-6"
+        >
+          <ArrowLeft size={13} />
+          Back
+        </button>
+      )}
       <div className="w-full max-w-md">
         <div className="mb-7 flex flex-col items-center gap-3 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-editorial-sage">
@@ -81,12 +105,13 @@ export default function Login() {
             {(["login", "signup"] as const).map((m) => (
               <button
                 key={m}
+                aria-pressed={mode === m}
                 onClick={() => {
                   setMode(m);
                   setError(null);
                 }}
                 className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold capitalize transition-all ${
-                  mode === m ? "bg-white text-editorial-charcoal shadow-sm" : "text-editorial-charcoal/50 hover:text-editorial-charcoal"
+                  mode === m ? "bg-white text-editorial-charcoal shadow-sm" : "text-editorial-charcoal/70 hover:text-editorial-charcoal"
                 }`}
               >
                 {m === "login" ? "Sign in" : "Create account"}

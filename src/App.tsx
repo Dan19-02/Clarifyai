@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import {
-  BookOpen,
   Sparkles,
   Brain,
   Search,
@@ -21,6 +20,7 @@ import {
   X,
   FileText,
   CheckCircle2,
+  AlertTriangle,
   ChevronDown,
   ChevronRight
 } from "lucide-react";
@@ -38,14 +38,17 @@ import {
   base64ToFloat32PCM,
   parseTeachingSections,
   filesToAttachments,
-  dataUrlToBase64,
-  NotebookSection
+  dataUrlToBase64
 } from "./utils";
 import { useAuth } from "./AuthContext";
 import { api, getToken } from "./api";
 import { DEFAULT_CHAPTERS, makeDefaultProfile } from "./defaults";
 import { Markdown } from "./Markdown";
-import Login from "./Login";
+import { NotebookViewer } from "./NotebookViewer";
+
+// The public landing site is only for signed-out visitors, so it loads as its
+// own chunk and never weighs down a student's session.
+const Landing = lazy(() => import("./landing/Landing"));
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "./components/ui/hover-card";
 import { STUDY_FACTS, FALLBACK_STUDY_FACT, pickFirstFactIndex } from "./facts";
 
@@ -114,7 +117,14 @@ export default function App() {
   const liveInterruptedRef = useRef<boolean>(false);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Live view of the open conversation, readable inside long-lived stream
+  // callbacks: an in-flight answer must never paint into a different chat.
+  const activeIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   // Load profile, study log, conversations, and the active chat for the user.
   useEffect(() => {
@@ -162,8 +172,20 @@ export default function App() {
     return () => clearTimeout(t);
   }, [profile, chapters, account?.id]);
 
+  // Auto-scroll on new messages, but during streaming (same message count,
+  // growing text) only follow when the student is already near the bottom, so
+  // they can scroll up and re-read without being yanked back every token.
+  const prevMsgCount = useRef(0);
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesRef.current;
+    const countChanged = chatHistory.length !== prevMsgCount.current;
+    prevMsgCount.current = chatHistory.length;
+    if (!el || countChanged) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+    if (nearBottom) chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory, isGenerating]);
 
   useEffect(() => {
@@ -283,13 +305,19 @@ export default function App() {
 
     setIsGenerating(true);
 
+    // Streaming draft bubble: grows with each delta, then is REPLACED by the
+    // authoritative final answer from the "done" event (with Deep-check on,
+    // that final text is the examiner-corrected version of the draft).
+    const streamId = `model-stream-${Date.now()}`;
+    const patchStream = (patch: Partial<ChatMessage> | ((m: ChatMessage) => ChatMessage)) =>
+      setChatHistory((prev) =>
+        prev.map((m) => (m.id === streamId ? (typeof patch === "function" ? patch(m) : { ...m, ...patch }) : m))
+      );
+
     try {
       const serverHistory = chatHistory.slice(-10).map((m) => ({ role: m.role, text: m.text }));
       const images = atts.map((a) => ({ data: dataUrlToBase64(a.dataUrl), mimeType: a.mimeType }));
-
-      // Generate (and, with Deep-check on, fact-check) the FULL answer, then show
-      // it all at once. No streaming: the complete reply lands in a single bubble.
-      const data = await api.chat({
+      const baseBody = {
         message: text,
         history: serverHistory,
         mode: studyMode,
@@ -299,28 +327,91 @@ export default function App() {
         preferredAnalogy: profile.preferredAnalogy,
         deepVerify,
         images
-      });
-
-      const modelMsg: ChatMessage = {
-        id: `model-${Date.now()}`,
-        role: "model",
-        text: data.text,
-        timestamp: new Date().toLocaleTimeString(),
-        mode: studyMode,
-        sources: data.sources || []
       };
 
-      setChatHistory((prev) => [...prev, modelMsg]);
-      api.addMessage(convId, modelMsg).catch(() => {});
+      // The answer always persists to its own conversation, but only paints
+      // into local state while that conversation is still the one on screen
+      // (it reloads from the server if the student comes back later).
+      const finalize = (msg: ChatMessage) => {
+        if (activeIdRef.current === convId) {
+          setChatHistory((prev) => [...prev.filter((m) => m.id !== streamId), msg]);
+        }
+        api.addMessage(convId, msg).catch(() => {});
+      };
+
+      // Try streaming first. Text-only, and not for explicit Search mode: the
+      // server would just answer "fallback" while charging a rate-limit token.
+      // (Auto-routed search from Standard is still caught server-side.)
+      let streamResult: Awaited<ReturnType<typeof api.chatStream>> | null = null;
+      if (images.length === 0 && studyMode !== "search") {
+        try {
+          streamResult = await api.chatStream(
+            baseBody,
+            (chunk) => {
+              if (activeIdRef.current !== convId) return;
+              setChatHistory((prev) => {
+                if (prev.some((m) => m.id === streamId)) {
+                  return prev.map((m) => (m.id === streamId ? { ...m, text: m.text + chunk } : m));
+                }
+                const bubble: ChatMessage = {
+                  id: streamId,
+                  role: "model",
+                  text: chunk,
+                  timestamp: new Date().toLocaleTimeString(),
+                  mode: studyMode,
+                  streaming: true
+                };
+                return [...prev, bubble];
+              });
+            },
+            () => patchStream({ verification: "checking", streaming: false })
+          );
+        } catch (streamErr: any) {
+          console.warn("Streaming failed, retrying on /chat:", streamErr?.message || streamErr);
+          streamResult = { kind: "fallback", reason: "stream-failed" };
+        }
+      }
+
+      if (streamResult && streamResult.kind === "done") {
+        finalize({
+          id: `model-${Date.now()}`,
+          role: "model",
+          text: streamResult.text,
+          timestamp: new Date().toLocaleTimeString(),
+          mode: studyMode,
+          sources: streamResult.sources || [],
+          verification: streamResult.verification
+        });
+      } else {
+        // Plain /chat: the proven whole-answer path (also the stream's safety
+        // net). After a failed stream, skip MiniMax so the student is not made
+        // to sit through a second timeout before the Gemini fallback.
+        const data = await api.chat({
+          ...baseBody,
+          avoidOpenSource: streamResult?.kind === "fallback" && streamResult.reason === "stream-failed"
+        });
+        finalize({
+          id: `model-${Date.now()}`,
+          role: "model",
+          text: data.text,
+          timestamp: new Date().toLocaleTimeString(),
+          mode: studyMode,
+          sources: data.sources || [],
+          verification: data.verification
+        });
+      }
     } catch (error: any) {
       console.error(error);
-      const errorMsg: ChatMessage = {
-        id: `err-${Date.now()}`,
-        role: "model",
-        text: `⚠️ **I hit a small hiccup:** ${error.message || "Something went wrong while connecting to Clarify.AI."}\n\nThis often happens when API limits are exceeded. Let's try again in a moment!`,
-        timestamp: new Date().toLocaleTimeString()
-      };
-      setChatHistory((prev) => [...prev, errorMsg]);
+      // Errors surface only in the conversation that asked the question.
+      if (activeIdRef.current === convId) {
+        const errorMsg: ChatMessage = {
+          id: `err-${Date.now()}`,
+          role: "model",
+          text: `⚠️ **I hit a small hiccup:** ${error.message || "Something went wrong while connecting to Clarify.AI."}\n\nThis often happens when API limits are exceeded. Let's try again in a moment!`,
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setChatHistory((prev) => [...prev.filter((m) => m.id !== streamId), errorMsg]);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -532,6 +623,9 @@ export default function App() {
   };
 
   const renderMessageContent = (message: ChatMessage) => {
+    // While a draft is streaming in, render it as plain markdown; the tabbed
+    // notebook appears once the final answer lands (no mid-stream reshuffle).
+    if (message.streaming) return <Markdown>{message.text}</Markdown>;
     const { preamble, sections } = parseTeachingSections(message.text);
     if (sections.length > 0) {
       // The Exam-Ready Answer (preamble) renders in full above the tabbed notebook.
@@ -556,7 +650,7 @@ export default function App() {
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-editorial-sage">
           <span className="font-serif text-2xl italic leading-none text-editorial-ivory">C</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-editorial-charcoal/50">
+        <div className="flex items-center gap-2 text-sm text-editorial-charcoal/70">
           <Loader2 size={15} className="animate-spin" />
           Preparing your study desk…
         </div>
@@ -565,7 +659,19 @@ export default function App() {
   }
 
   if (!account) {
-    return <Login />;
+    return (
+      <Suspense
+        fallback={
+          <div className="flex min-h-[100dvh] items-center justify-center bg-night">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-editorial-sage">
+              <span className="font-serif text-2xl italic leading-none text-editorial-ivory">C</span>
+            </div>
+          </div>
+        }
+      >
+        <Landing />
+      </Suspense>
+    );
   }
 
   const MODES: { key: StudyMode; label: string; icon: React.ReactNode; title: string; desc: string }[] = [
@@ -879,7 +985,7 @@ export default function App() {
           )}
 
           {/* Messages */}
-          <div className="flex-1 bg-[#FAF9F6]/40 border border-editorial-line-light rounded-2xl p-3 md:p-5 overflow-y-auto flex flex-col gap-5 min-h-[280px]">
+          <div ref={messagesRef} className="flex-1 bg-[#FAF9F6]/40 border border-editorial-line-light rounded-2xl p-3 md:p-5 overflow-y-auto flex flex-col gap-5 min-h-[280px]">
             {chatHistory.length === 0 && !isGenerating && (
               <div className="m-auto text-center max-w-md flex flex-col items-center gap-4 py-8">
                 <div className="w-12 h-12 rounded-full bg-editorial-sage/10 flex items-center justify-center text-editorial-sage">
@@ -942,6 +1048,28 @@ export default function App() {
 
                   {message.text && renderMessageContent(message)}
 
+                  {/* Deep-check state: honest at every stage. */}
+                  {message.role === "model" && message.verification && (
+                    <div
+                      className={`mt-3 flex items-center gap-1.5 text-[11px] ${
+                        message.verification === "unavailable" ? "text-amber-800" : "text-editorial-sage"
+                      }`}
+                    >
+                      {message.verification === "checking" ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : message.verification === "passed" ? (
+                        <CheckCircle2 size={12} />
+                      ) : (
+                        <AlertTriangle size={12} />
+                      )}
+                      {message.verification === "checking"
+                        ? "Deep-check is reviewing this answer…"
+                        : message.verification === "passed"
+                        ? "Deep-checked: a second examiner pass reviewed this answer."
+                        : "Deep-check could not run this time, so this answer is shown unverified."}
+                    </div>
+                  )}
+
                   {/* Sources */}
                   {message.sources && message.sources.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-editorial-line-light flex flex-wrap gap-2 items-center">
@@ -958,7 +1086,7 @@ export default function App() {
                   )}
 
                   {/* Action row: stay-until-it-clicks re-explain + Listen */}
-                  {message.role === "model" && message.text && (
+                  {message.role === "model" && message.text && !message.streaming && (
                     <div className="mt-3 flex items-center justify-between gap-2 border-t border-editorial-line-light pt-2.5">
                       {/* One-tap "still fuzzy", only on teaching-length replies, not greetings/errors */}
                       {message.text.length > 200 ? (
@@ -989,7 +1117,8 @@ export default function App() {
               </div>
             ))}
 
-            {isGenerating && (
+            {/* Facts fill the wait until the first streamed token arrives. */}
+            {isGenerating && !chatHistory.some((m) => m.streaming || m.verification === "checking") && (
               <SmartFactsLoader seedMessage={[...chatHistory].reverse().find((m) => m.role === "user")?.text || ""} />
             )}
 
@@ -1180,7 +1309,6 @@ export default function App() {
   );
 }
 
-// Visual notebook: parses structured teacher responses into tabbed sections.
 // Engaging loader: rotates curated "Did you know?" facts (client-only, no model
 // call) while the answer generates. Facts auto-change every 10s and stay until
 // the full answer has been generated.
@@ -1223,63 +1351,3 @@ function SmartFactsLoader({ seedMessage }: { seedMessage: string }) {
   );
 }
 
-interface NotebookViewerProps {
-  sections: NotebookSection[];
-}
-
-function NotebookViewer({ sections }: NotebookViewerProps) {
-  const [activeTabIdx, setActiveTabIdx] = useState(0);
-
-  return (
-    <div className="flex flex-col gap-4 max-w-full my-1">
-      <div className="bg-editorial-stone border border-editorial-line-light p-3 rounded-xl flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BookOpen size={15} className="text-editorial-sage shrink-0" />
-          <span className="text-xs font-semibold text-editorial-charcoal">Study Notebook</span>
-        </div>
-        <span className="text-[10px] text-white font-medium bg-editorial-sage px-2.5 py-0.5 rounded-full">{sections.length} parts</span>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-3 items-stretch min-h-[240px] max-w-full">
-        <div className="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-y-auto pb-1.5 md:pb-0 shrink-0 md:w-44 border-b md:border-b-0 md:border-r border-editorial-line-light pr-0 md:pr-3 scrollbar-none">
-          {sections.map((sec, idx) => (
-            <button
-              key={idx}
-              onClick={() => setActiveTabIdx(idx)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-full text-left text-xs font-medium transition-all shrink-0 md:w-full border cursor-pointer ${
-                activeTabIdx === idx ? "bg-editorial-sage text-white border-editorial-sage" : "bg-white text-editorial-charcoal/60 hover:text-editorial-charcoal hover:bg-editorial-stone/50 border-editorial-line-light"
-              }`}
-            >
-              <span className="text-sm shrink-0">{sec.emoji}</span>
-              <span className="truncate">{sec.title}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 bg-white border border-editorial-line rounded-2xl p-4 md:p-5 flex flex-col gap-2 min-w-0 max-w-full relative overflow-y-auto">
-          {sections[activeTabIdx] && (
-            <motion.div key={activeTabIdx} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col h-full justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 pb-3 border-b border-editorial-line-light mb-3">
-                  <span className="text-xl">{sections[activeTabIdx].emoji}</span>
-                  <h4 className="text-sm font-serif font-bold text-editorial-charcoal">{sections[activeTabIdx].title}</h4>
-                </div>
-                <div className="max-w-full overflow-x-auto">
-                  <Markdown>{sections[activeTabIdx].content}</Markdown>
-                </div>
-              </div>
-
-              <div className="mt-5 pt-3 border-t border-editorial-line-light flex items-center justify-between text-[10px] text-editorial-charcoal/40">
-                <span>Part {activeTabIdx + 1} of {sections.length}</span>
-                <div className="flex gap-1.5">
-                  <button disabled={activeTabIdx === 0} onClick={() => setActiveTabIdx((p) => p - 1)} className="px-3 py-1 rounded-full bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-charcoal hover:text-editorial-sage border border-editorial-line-light text-[11px] disabled:opacity-30 cursor-pointer transition-colors">Prev</button>
-                  <button disabled={activeTabIdx === sections.length - 1} onClick={() => setActiveTabIdx((p) => p + 1)} className="px-3 py-1 rounded-full bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-charcoal hover:text-editorial-sage border border-editorial-line-light text-[11px] disabled:opacity-30 cursor-pointer transition-colors">Next</button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}

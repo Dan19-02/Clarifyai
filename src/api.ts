@@ -57,6 +57,58 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   return data as T;
 }
 
+export type ChatStreamResult =
+  | { kind: "done"; text: string; sources: any[]; verification?: "passed" | "unavailable" }
+  | { kind: "fallback"; reason: string };
+
+/**
+ * Streaming chat (SSE over fetch, POST /chat/stream). onDelta receives each
+ * incremental chunk; onChecking fires when the Deep-check examiner starts on
+ * the completed draft. Resolves with the authoritative final answer ("done",
+ * whose text REPLACES the streamed draft) or a "fallback" instruction to use
+ * the plain /chat endpoint. Throws on network or server errors.
+ */
+async function chatStream(
+  body: any,
+  onDelta: (chunk: string) => void,
+  onChecking: () => void
+): Promise<ChatStreamResult> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}/api/chat/stream`, { method: "POST", headers, body: JSON.stringify(body) });
+  if (res.status === 401) setToken(null);
+  if (!res.ok || !res.body) throw new Error(`Stream request failed (${res.status})`);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const frames = buf.split("\n\n");
+    buf = frames.pop() || "";
+    for (const frame of frames) {
+      const line = frame.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) continue;
+      let msg: any;
+      try {
+        msg = JSON.parse(line.slice(5).trim());
+      } catch {
+        continue;
+      }
+      if (msg.type === "delta" && typeof msg.text === "string") onDelta(msg.text);
+      else if (msg.type === "checking") onChecking();
+      else if (msg.type === "done") return { kind: "done", text: msg.text, sources: msg.sources || [], verification: msg.verification };
+      else if (msg.type === "fallback") return { kind: "fallback", reason: msg.reason || "" };
+      else if (msg.type === "error") throw new Error(msg.error || "Stream error");
+    }
+  }
+  throw new Error("The stream ended before the answer was complete.");
+}
+
 export const api = {
   signup: (body: SignupInput) =>
     request<{ token: string; user: Account }>("/auth/signup", { method: "POST", body: JSON.stringify(body) }),
@@ -80,6 +132,11 @@ export const api = {
     msg: { id: string; role: string; text: string; mode?: string; sources?: any[]; attachments?: any[] }
   ) => request(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(msg) }),
 
-  chat: (body: any) => request<{ text: string; sources: any[]; cached?: boolean }>("/chat", { method: "POST", body: JSON.stringify(body) }),
+  chat: (body: any) =>
+    request<{ text: string; sources: any[]; cached?: boolean; verification?: "passed" | "unavailable" }>("/chat", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  chatStream,
   tts: (body: { text: string; voice: string }) => request<{ audio: string }>("/tts", { method: "POST", body: JSON.stringify(body) }),
 };
