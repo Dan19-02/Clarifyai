@@ -31,15 +31,70 @@ function getMermaid() {
   return mermaidPromise;
 }
 
+// Right-pointing unicode / decorative arrows the model reaches for instead of
+// the plain ASCII edge Mermaid needs. (The no-dash punctuation rule nudges it
+// away from "-->", so it substitutes a glyph the parser then rejects.)
+const UNICODE_ARROWS = /[→➔➙➜➝➞➟➠➡⇒⇨⟶⟹⟼↦⭢⮕⮞⮞⬎]/g;
+
+/**
+ * Repair the two Mermaid mistakes that make the model's diagrams fail to parse
+ * and fall back to raw source: unicode arrows where "-->" belongs, and
+ * unquoted parentheses in square-bracket labels. Label/edge-label text is
+ * protected so an arrow that is genuinely part of a label is never rewritten.
+ */
+export function sanitizeMermaid(src: string): string {
+  // 1) Quote square-bracket labels containing parentheses: C[Watt (W)] -> C["Watt (W)"].
+  let s = src.replace(/\[([^\[\]"]*\([^\[\]"]*)\]/g, '["$1"]');
+  // 2) Stash label / bracket / pipe content behind a sentinel that cannot occur
+  //    in real Mermaid, then fix connector arrows outside it. (A bare-number
+  //    placeholder would collide with digits in the diagram itself.)
+  const stash: string[] = [];
+  s = s.replace(/"[^"]*"|\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|\|[^|]*\|/g, (m) => {
+    stash.push(m);
+    return `@@S${stash.length - 1}@@`;
+  });
+  s = s
+    .replace(UNICODE_ARROWS, "-->")
+    .replace(/[\u2013\u2014]+>/g, "-->") // en/em dash used as an arrow becomes a plain edge
+    .replace(/-{4,}>/g, "-->"); // collapse an accidentally long "---->" edge
+  s = s.replace(/@@S(\d+)@@/g, (_, i) => stash[Number(i)] ?? "");
+  return s;
+}
+
+/**
+ * When a diagram genuinely will not render, present it in words instead of
+ * dumping raw Mermaid DSL at the student. Returns "" if nothing readable can
+ * be salvaged (the caller then shows nothing, which beats broken code).
+ */
+function mermaidToWords(src: string): string {
+  const lines = src
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !/^(graph|flowchart|subgraph|end|style|classDef|class|linkStyle|direction)\b/i.test(l))
+    .map((l) =>
+      l
+        .replace(/-->\s*\|([^|]*)\|/g, " → ($1) → ") // labelled edge
+        .replace(/-\.->|==>|-->|---/g, " → ") // any edge to a display arrow
+        .replace(/[A-Za-z0-9_]+\s*[\[({]+\s*"?([^\])}"]*?)"?\s*[\])}]+/g, "$1") // id[label] -> label
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter((l) => l && l !== "→");
+  return lines.join("\n");
+}
+
 function MermaidBlock({ chart }: { chart: string }) {
   const reactId = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const clean = React.useMemo(() => sanitizeMermaid(chart), [chart]);
   const [svg, setSvg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setSvg(null);
+    setFailed(false);
     getMermaid()
-      .then((mermaid) => mermaid.render(`mmd-${reactId}`, chart))
+      .then((mermaid) => mermaid.render(`mmd-${reactId}`, clean))
       .then(({ svg }) => {
         if (!cancelled) setSvg(svg);
       })
@@ -49,14 +104,21 @@ function MermaidBlock({ chart }: { chart: string }) {
     return () => {
       cancelled = true;
     };
-  }, [chart, reactId]);
+  }, [clean, reactId]);
 
   if (failed) {
-    // Fall back to showing the diagram source rather than nothing.
+    // Never show raw Mermaid DSL: render the diagram in words, or nothing.
+    const words = mermaidToWords(clean);
+    if (!words) return null;
     return (
-      <pre className="overflow-x-auto rounded-xl bg-editorial-stone/60 p-3 text-xs font-mono text-editorial-charcoal/80">
-        {chart}
-      </pre>
+      <div className="my-3 rounded-xl border border-editorial-line-light bg-editorial-stone/40 p-4">
+        <div className="mb-1.5 text-xs font-semibold text-editorial-charcoal/70">Diagram, in words</div>
+        <ul className="space-y-1 text-sm text-editorial-charcoal/85">
+          {words.split("\n").map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      </div>
     );
   }
 
