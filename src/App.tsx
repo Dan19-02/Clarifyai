@@ -71,7 +71,7 @@ const STILL_CONFUSED_PROMPT =
   "I still don't fully get it, can you explain that part differently, in a simpler way?";
 
 const ACTION_PILL =
-  "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-sage border border-editorial-line-light disabled:opacity-40 cursor-pointer";
+  "flex items-center gap-1.5 whitespace-nowrap shrink-0 px-3 py-1 rounded-full text-xs transition-all bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-sage border border-editorial-line-light disabled:opacity-40 cursor-pointer";
 
 type MobileView = "study" | "chat";
 
@@ -906,7 +906,10 @@ export default function App() {
             onClick={() => setNotebookOpen(true)}
             title="Pre-exam notebook"
             aria-label="Pre-exam notebook"
-            className="w-9 h-9 rounded-full border border-editorial-line flex items-center justify-center text-editorial-charcoal/60 hover:bg-editorial-stone hover:text-editorial-sage transition-all cursor-pointer shrink-0"
+            /* Below lg the bottom nav carries a Notebook tab, so this header
+               button would be a redundant, crowding duplicate: show it only on
+               desktop where there is no bottom nav. */
+            className="w-9 h-9 rounded-full border border-editorial-line hidden lg:flex items-center justify-center text-editorial-charcoal/60 hover:bg-editorial-stone hover:text-editorial-sage transition-all cursor-pointer shrink-0"
             id="btn-notebook"
           >
             <BookMarked size={15} />
@@ -1221,64 +1224,66 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Action row: simpler, deeper, checked, or heard. */}
+                  {/* Action row: simpler, deeper, checked, saved, or heard. One
+                      wrapping cluster so the buttons pair up tidily as the column
+                      narrows (phone, tablet, sidebar-shrunk desktop) instead of
+                      wrapping raggedly. Listen only floats right once there is
+                      room for it (sm+); on a phone it joins the same wrap. */}
                   {message.role === "model" && message.text && !message.streaming && (
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-editorial-line-light pt-2.5">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {message.text.length > 200 && (
-                          <button
-                            onClick={() => handleSendMessage(STILL_CONFUSED_PROMPT)}
-                            disabled={isGenerating}
-                            className={ACTION_PILL}
-                            id={`btn-reexplain-${message.id}`}
-                            title="Explain it again, a different way, as many times as you need"
-                          >
-                            <Sparkles size={12} /> Still fuzzy?
-                          </button>
-                        )}
-                        {canGoDeep(message) && (
-                          <button
-                            onClick={() => handleSendMessage(questionBefore(msgIdx), { deep: true, silent: true })}
-                            disabled={isGenerating}
-                            className={ACTION_PILL}
-                            id={`btn-deepdive-${message.id}`}
-                            title="Open the full study view: the exam-ready answer plus the nine-part notebook"
-                          >
-                            <BookOpen size={12} /> Deep understanding
-                          </button>
-                        )}
-                        {message.text.length > 200 && message.verification !== "passed" && message.verification !== "checking" && (
-                          <button
-                            onClick={() => handleDeepCheck(message, questionBefore(msgIdx))}
-                            disabled={isGenerating}
-                            className={ACTION_PILL}
-                            id={`btn-deepcheck-${message.id}`}
-                            title="A second examiner pass double-checks the facts and calculations in this answer"
-                          >
-                            <CheckCircle2 size={12} /> Deep-check
-                          </button>
-                        )}
-                        {message.verification !== "checking" && (
-                          <button
-                            onMouseDown={(e) => e.preventDefault() /* keep the text selection alive */}
-                            onClick={() => saveSelectionToNotebook(message.id)}
-                            disabled={savingSelection}
-                            className={ACTION_PILL}
-                            id={`btn-savelines-${message.id}`}
-                            title="Select the lines that made it click, then save them to your Pre-exam notebook"
-                          >
-                            <BookMarked size={12} /> Save lines
-                          </button>
-                        )}
-                      </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-editorial-line-light pt-2.5">
+                      {message.text.length > 200 && (
+                        <button
+                          onClick={() => handleSendMessage(STILL_CONFUSED_PROMPT)}
+                          disabled={isGenerating}
+                          className={ACTION_PILL}
+                          id={`btn-reexplain-${message.id}`}
+                          title="Explain it again, a different way, as many times as you need"
+                        >
+                          <Sparkles size={12} className="shrink-0" /> Still fuzzy?
+                        </button>
+                      )}
+                      {canGoDeep(message) && (
+                        <button
+                          onClick={() => handleSendMessage(questionBefore(msgIdx), { deep: true, silent: true })}
+                          disabled={isGenerating}
+                          className={ACTION_PILL}
+                          id={`btn-deepdive-${message.id}`}
+                          title="Open the full study view: the exam-ready answer plus the nine-part notebook"
+                        >
+                          <BookOpen size={12} className="shrink-0" /> Go deeper
+                        </button>
+                      )}
+                      {message.text.length > 200 && message.verification !== "passed" && message.verification !== "checking" && (
+                        <button
+                          onClick={() => handleDeepCheck(message, questionBefore(msgIdx))}
+                          disabled={isGenerating}
+                          className={ACTION_PILL}
+                          id={`btn-deepcheck-${message.id}`}
+                          title="A second examiner pass double-checks the facts and calculations in this answer"
+                        >
+                          <CheckCircle2 size={12} className="shrink-0" /> Deep-check
+                        </button>
+                      )}
+                      {message.verification !== "checking" && (
+                        <button
+                          onMouseDown={(e) => e.preventDefault() /* keep the text selection alive */}
+                          onClick={() => saveSelectionToNotebook(message.id)}
+                          disabled={savingSelection}
+                          className={ACTION_PILL}
+                          id={`btn-savelines-${message.id}`}
+                          title="Select the lines that made it click, then save them to your Pre-exam notebook"
+                        >
+                          <BookMarked size={12} className="shrink-0" /> Save lines
+                        </button>
+                      )}
                       <button
                         onClick={() => handleSpeak(message.id, message.text)}
-                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all ${
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all shrink-0 cursor-pointer sm:ml-auto ${
                           playingMessageId === message.id ? "bg-editorial-sage text-white" : "bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-sage border border-editorial-line-light"
                         }`}
                         id={`btn-tts-${message.id}`}
                       >
-                        {playingMessageId === message.id ? <><VolumeX size={12} /> Mute</> : <><Volume2 size={12} /> Listen</>}
+                        {playingMessageId === message.id ? <><VolumeX size={12} className="shrink-0" /> Mute</> : <><Volume2 size={12} className="shrink-0" /> Listen</>}
                       </button>
                     </div>
                   )}
