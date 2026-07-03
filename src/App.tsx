@@ -22,7 +22,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  BookMarked
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -46,6 +47,7 @@ import { DEFAULT_CHAPTERS, makeDefaultProfile, SUPPORT_EMAIL } from "./defaults"
 import { Markdown } from "./Markdown";
 import { NotebookViewer } from "./NotebookViewer";
 import UpgradeModal from "./UpgradeModal";
+import PreExamNotebook from "./PreExamNotebook";
 
 // The public landing site is only for signed-out visitors, so it loads as its
 // own chunk and never weighs down a student's session.
@@ -104,6 +106,17 @@ export default function App() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<string>("");
 
+  // Pre-exam notebook overlay + line-selection save state + toast.
+  const [notebookOpen, setNotebookOpen] = useState(false);
+  const [selSave, setSelSave] = useState<{ msgId: string; text: string } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  };
+
   // Profile + study log come from the signed-in account.
   const [profile, setProfile] = useState<StudentProfile>(() => makeDefaultProfile());
   const [chapters, setChapters] = useState<ChapterProgress[]>(DEFAULT_CHAPTERS);
@@ -154,6 +167,74 @@ export default function App() {
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
+
+  // Track text selection inside answer bubbles. When a student highlights the
+  // exact lines that made something click, a save bar appears (free selection
+  // by design: a whole block would drag the filler back in at revision time).
+  useEffect(() => {
+    const onSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) return setSelSave(null);
+      const text = sel.toString().trim();
+      if (!text) return setSelSave(null);
+      const answerBodyOf = (n: Node | null | undefined) => {
+        const el = n instanceof Element ? n : n?.parentElement;
+        return el?.closest?.("[data-answer-body]") || null;
+      };
+      // BOTH ends of the selection must sit inside the SAME answer body: a
+      // drag across two bubbles, or over buttons/sources/status chrome, must
+      // never become a saved "point".
+      const anchorBody = answerBodyOf(sel.anchorNode);
+      const focusBody = answerBodyOf(sel.focusNode);
+      if (!anchorBody || anchorBody !== focusBody) return setSelSave(null);
+      const bubble = anchorBody.closest('[id^="msg-bubble-"]');
+      if (!bubble) return setSelSave(null);
+      setSelSave({ msgId: bubble.id.replace("msg-bubble-", ""), text: text.slice(0, 4000) });
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+  }, []);
+
+  // Save the selected lines to the Pre-exam notebook. Saving is open to every
+  // plan (viewing is gated); the AI files the point by subject and chapter.
+  const [savingSelection, setSavingSelection] = useState(false);
+  const saveSelectionToNotebook = async (explicitMsgId?: string) => {
+    if (savingSelection) return; // a double tap must never save twice
+    const target = selSave && (!explicitMsgId || selSave.msgId === explicitMsgId) ? selSave : null;
+    if (!target) {
+      showToast("Select the lines you like in the answer first, then tap Save lines.");
+      return;
+    }
+    const idx = chatHistory.findIndex((m) => m.id === target.msgId);
+    const msg = chatHistory[idx];
+    if (!msg || msg.role !== "model") {
+      showToast("Select lines inside an answer to save them.");
+      return;
+    }
+    // Never save a draft the examiner is still reviewing: the corrected final
+    // answer replaces it, and a wrong fact must not enter the revision shelf.
+    if (msg.streaming || msg.verification === "checking") {
+      showToast("One moment: Deep-check is still reviewing this answer. Save once it settles.");
+      return;
+    }
+    // Snapshot taken; clear synchronously so repeat taps have nothing to save.
+    setSavingSelection(true);
+    setSelSave(null);
+    window.getSelection()?.removeAllRanges();
+    try {
+      await api.saveNotebookEntry({
+        text: target.text,
+        question: questionBefore(idx),
+        messageId: msg.id,
+        conversationId: activeId || undefined
+      });
+      showToast("Saved to your Pre-exam notebook. It files itself under the right chapter.");
+    } catch (e: any) {
+      showToast(e?.message || "Could not save that. Please select the lines again and retry.");
+    } finally {
+      setSavingSelection(false);
+    }
+  };
 
   // Load profile, study log, conversations, and the active chat for the user.
   useEffect(() => {
@@ -222,6 +303,7 @@ export default function App() {
     localStorage.removeItem("clarify_images");
     return () => {
       if (audioPlayerRef.current) audioPlayerRef.current.pause();
+      if (toastTimer.current) clearTimeout(toastTimer.current);
       stopLiveSession();
     };
   }, []);
@@ -821,6 +903,15 @@ export default function App() {
             }}
           />
           <button
+            onClick={() => setNotebookOpen(true)}
+            title="Pre-exam notebook"
+            aria-label="Pre-exam notebook"
+            className="w-9 h-9 rounded-full border border-editorial-line flex items-center justify-center text-editorial-charcoal/60 hover:bg-editorial-stone hover:text-editorial-sage transition-all cursor-pointer shrink-0"
+            id="btn-notebook"
+          >
+            <BookMarked size={15} />
+          </button>
+          <button
             onClick={() => {
               setEditProfileForm({ ...profile });
               setIsEditingProfile(true);
@@ -1084,7 +1175,14 @@ export default function App() {
                     </div>
                   )}
 
-                  {message.text && renderMessageContent(message)}
+                  {/* data-answer-body clamps line-selection saving to the answer
+                      text itself: never buttons, sources, or status chrome. */}
+                  {message.text &&
+                    (message.role === "model" ? (
+                      <div data-answer-body="true">{renderMessageContent(message)}</div>
+                    ) : (
+                      renderMessageContent(message)
+                    ))}
 
                   {/* Deep-check state: honest at every stage. */}
                   {message.role === "model" && message.verification && (
@@ -1160,6 +1258,18 @@ export default function App() {
                             <CheckCircle2 size={12} /> Deep-check
                           </button>
                         )}
+                        {message.verification !== "checking" && (
+                          <button
+                            onMouseDown={(e) => e.preventDefault() /* keep the text selection alive */}
+                            onClick={() => saveSelectionToNotebook(message.id)}
+                            disabled={savingSelection}
+                            className={ACTION_PILL}
+                            id={`btn-savelines-${message.id}`}
+                            title="Select the lines that made it click, then save them to your Pre-exam notebook"
+                          >
+                            <BookMarked size={12} /> Save lines
+                          </button>
+                        )}
                       </div>
                       <button
                         onClick={() => handleSpeak(message.id, message.text)}
@@ -1208,6 +1318,32 @@ export default function App() {
               ))}
             </div>
           )}
+
+          {/* Selected-lines save bar: appears while the student is highlighting
+              inside an answer, so keeping a line is one calm tap. */}
+          {selSave &&
+            (() => {
+              const m = chatHistory.find((mm) => mm.id === selSave.msgId);
+              // Never offer to save a streaming draft or one Deep-check is
+              // still reviewing: the corrected final answer replaces it.
+              return m?.role === "model" && !m.streaming && m.verification !== "checking";
+            })() && (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-editorial-sage/40 bg-editorial-sage/5 px-4 py-2.5">
+                <p className="min-w-0 flex-1 truncate text-xs italic text-editorial-charcoal/70">
+                  "{selSave.text.slice(0, 90)}
+                  {selSave.text.length > 90 ? "…" : ""}"
+                </p>
+                <button
+                  onMouseDown={(e) => e.preventDefault() /* keep the selection alive */}
+                  onClick={() => saveSelectionToNotebook()}
+                  disabled={savingSelection}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-editorial-sage px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                  id="btn-save-selection"
+                >
+                  <BookMarked size={13} /> {savingSelection ? "Saving…" : "Save lines"}
+                </button>
+              </div>
+            )}
 
           {/* Input */}
           <div className="mt-3 bg-white border border-editorial-line rounded-2xl p-2 flex items-center gap-1.5 shadow-sm focus-within:border-editorial-sage focus-within:ring-1 focus-within:ring-editorial-sage/30 transition-all">
@@ -1264,7 +1400,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mobile bottom nav, 2 tabs */}
+      {/* Mobile bottom nav: 2 view tabs + the Pre-exam notebook overlay */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-editorial-line bg-editorial-ivory/95 backdrop-blur-sm">
         {([
           { k: "study", label: "Study Log", icon: <MessageSquare size={18} /> },
@@ -1281,7 +1417,38 @@ export default function App() {
             {t.label}
           </button>
         ))}
+        <button
+          onClick={() => setNotebookOpen(true)}
+          className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-editorial-charcoal/40 hover:text-editorial-charcoal transition-colors"
+          id="tab-notebook"
+        >
+          <BookMarked size={18} />
+          Notebook
+        </button>
       </nav>
+
+      {/* Pre-exam notebook (full-screen overlay on every device) */}
+      <PreExamNotebook
+        open={notebookOpen}
+        onClose={() => setNotebookOpen(false)}
+        subscription={subscription}
+        onUpgrade={() => {
+          setNotebookOpen(false);
+          setUpgradeReason("");
+          setShowUpgrade(true);
+        }}
+      />
+
+      {/* Quiet toast (saves, hints) */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed left-1/2 top-4 z-[70] max-w-[92vw] -translate-x-1/2 rounded-full bg-editorial-charcoal px-5 py-2.5 text-center text-xs text-white shadow-lg"
+        >
+          {toast}
+        </div>
+      )}
 
       {/* Plan chooser / paywall */}
       {account && (

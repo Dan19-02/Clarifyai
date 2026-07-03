@@ -65,6 +65,44 @@ export interface Subscription {
   planExpiresAt: string | null;
 }
 
+// ---- Pre-exam notebook ----
+
+/** One saved point: the exact lines a student selected from an answer. */
+export interface NotebookEntry {
+  id: string;
+  messageId: string | null;
+  conversationId: string | null;
+  question: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface NotebookChapter {
+  chapter: string;
+  count: number;
+  latestAt: string;
+}
+
+export interface NotebookSubject {
+  subject: string;
+  count: number;
+  chapters: NotebookChapter[];
+}
+
+/** The shelf. locked=true comes with only savedCount (trial/Starter/lapsed). */
+export interface NotebookSummary {
+  locked: boolean;
+  savedCount: number;
+  subjects?: NotebookSubject[];
+}
+
+export interface ClarifyNote {
+  text: string;
+  generatedAt: string;
+  stale: boolean;
+  cached?: boolean;
+}
+
 export interface StudentProfile {
   name: string;
   board: string; // CBSE, ICSE, State Boards, JEE, NEET, None

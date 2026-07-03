@@ -3,7 +3,16 @@
  * Stores the JWT in localStorage and attaches it as a Bearer token.
  * All requests go to /api/* (proxied to the backend by Vite in dev).
  */
-import type { StudentProfile, ChapterProgress, ChatMessage, Conversation, Subscription } from "./types";
+import type {
+  StudentProfile,
+  ChapterProgress,
+  ChatMessage,
+  Conversation,
+  Subscription,
+  NotebookSummary,
+  NotebookEntry,
+  ClarifyNote,
+} from "./types";
 
 const TOKEN_KEY = "clarify_token";
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -198,6 +207,18 @@ export const api = {
   /** Unwind an optimistically saved question that the paywall blocked. */
   deleteMessage: (conversationId: string, messageId: string) =>
     request(`/conversations/${conversationId}/messages/${messageId}`, { method: "DELETE" }),
+
+  // Pre-exam notebook
+  saveNotebookEntry: (body: { text: string; question?: string; messageId?: string; conversationId?: string }) =>
+    request<{ ok: boolean; id: string }>("/notebook/entries", { method: "POST", body: JSON.stringify(body) }),
+  getNotebook: () => request<NotebookSummary>("/notebook"),
+  getNotebookChapter: (subject: string, chapter: string) =>
+    request<{ entries: NotebookEntry[]; note: ClarifyNote | null }>(
+      `/notebook/entries?subject=${encodeURIComponent(subject)}&chapter=${encodeURIComponent(chapter)}`
+    ),
+  deleteNotebookEntry: (id: string) => request(`/notebook/entries/${id}`, { method: "DELETE" }),
+  generateClarifyNotes: (subject: string, chapter: string) =>
+    request<ClarifyNote>("/notebook/notes", { method: "POST", body: JSON.stringify({ subject, chapter }) }),
 
   chat: (body: any) =>
     request<{ text: string; sources: any[]; cached?: boolean; verification?: "passed" | "unavailable" }>("/chat", {

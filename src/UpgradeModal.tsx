@@ -21,14 +21,17 @@ interface UiPlan {
   price: number;
   queries: string;
   note: string;
+  /** Tier-exclusive capability line (the Pre-exam notebook). */
+  perk?: string;
   featured: boolean;
 }
 
 // Mirrors the backend catalogue (subscription.ts) and the landing PricingSection.
+const NOTEBOOK_PERK = "Pre-exam notebook: save the lines that click, auto-filed by chapter, with Clarify notes for revision.";
 const UI_PLANS: UiPlan[] = [
   { id: "starter", name: "Starter", price: 199, queries: "100 questions a month", note: "About three questions a day. Room to breathe for daily doubts.", featured: false },
-  { id: "regular", name: "Regular", price: 499, queries: "300 questions a month", note: "Ten a day: daily learning plus exam-season revision.", featured: false },
-  { id: "unlimited", name: "Unlimited", price: 999, queries: "Unlimited questions", note: "Never ration your curiosity, never count a question.", featured: true },
+  { id: "regular", name: "Regular", price: 499, queries: "300 questions a month", note: "Ten a day: daily learning plus exam-season revision.", perk: NOTEBOOK_PERK, featured: false },
+  { id: "unlimited", name: "Unlimited", price: 999, queries: "Unlimited questions", note: "Never ration your curiosity, never count a question.", perk: NOTEBOOK_PERK, featured: true },
 ];
 
 const INCLUDED = [
@@ -162,9 +165,16 @@ export default function UpgradeModal({ open, onClose, account, subscription, rea
                       <span className={`text-xs ${plan.featured ? "text-chalk-dim" : "text-editorial-charcoal/60"}`}>/ month</span>
                     </p>
                     <p className="mt-3 text-sm font-semibold">{plan.queries}</p>
-                    <p className={`mt-1.5 flex-1 text-xs leading-relaxed ${plan.featured ? "text-chalk-dim" : "text-editorial-charcoal/65"}`}>
+                    <p className={`mt-1.5 text-xs leading-relaxed ${plan.featured ? "text-chalk-dim" : "text-editorial-charcoal/65"}`}>
                       {plan.note}
                     </p>
+                    <div className="flex-1">
+                      {plan.perk && (
+                        <p className={`mt-2 text-xs font-medium leading-relaxed ${plan.featured ? "text-sage-bright" : "text-editorial-sage"}`}>
+                          {plan.perk}
+                        </p>
+                      )}
+                    </div>
                     <button
                       onClick={() => buy(plan.id)}
                       disabled={busy || busyPlan !== null || renewLocked}

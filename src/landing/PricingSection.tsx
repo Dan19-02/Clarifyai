@@ -9,12 +9,16 @@ interface PricingSectionProps {
   onAuth: (mode: AuthMode) => void;
 }
 
+const NOTEBOOK_PERK =
+  "Includes the Pre-exam notebook: save the lines that click, auto-filed by chapter, with Clarify notes for revision.";
+
 const PLANS = [
   {
     name: "Starter",
     price: "₹199",
     queries: "100 queries a month",
     note: "About three questions a day. Room to breathe for daily doubts.",
+    perk: null as string | null,
     featured: false,
   },
   {
@@ -22,6 +26,7 @@ const PLANS = [
     price: "₹499",
     queries: "300 queries a month",
     note: "Serious study fuel: ten a day for daily learning and exam season revision.",
+    perk: NOTEBOOK_PERK,
     featured: false,
   },
   {
@@ -29,6 +34,7 @@ const PLANS = [
     price: "₹999",
     queries: "Unlimited queries",
     note: "The whole catch-net. Never ration your curiosity, never count a question.",
+    perk: NOTEBOOK_PERK,
     featured: true,
   },
 ];
@@ -76,9 +82,16 @@ export default function PricingSection({ onAuth }: PricingSectionProps) {
                 <span className={`text-sm ${plan.featured ? "text-chalk-dim" : "text-editorial-charcoal/65"}`}>/ month</span>
               </p>
               <p className="mt-4 text-[15px] font-semibold">{plan.queries}</p>
-              <p className={`landing-pretty mt-2 flex-1 text-sm leading-relaxed ${plan.featured ? "text-chalk-dim" : "text-editorial-charcoal/70"}`}>
+              <p className={`landing-pretty mt-2 text-sm leading-relaxed ${plan.featured ? "text-chalk-dim" : "text-editorial-charcoal/70"}`}>
                 {plan.note}
               </p>
+              <div className="flex-1">
+                {plan.perk && (
+                  <p className={`landing-pretty mt-2.5 text-[13px] font-medium leading-relaxed ${plan.featured ? "text-sage-bright" : "text-editorial-sage"}`}>
+                    {plan.perk}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => onAuth("signup")}
                 className={`mt-7 rounded-full px-6 py-3 text-sm font-semibold transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
