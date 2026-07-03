@@ -4,7 +4,7 @@
  * shows the product, not a mockup of it. The notebook tabs are fully
  * explorable right here on the page.
  */
-import { Sparkles, BookOpen, CheckCircle2, Volume2 } from "lucide-react";
+import { Sparkles, BookOpen, BookMarked, CheckCircle2, Volume2 } from "lucide-react";
 import { parseTeachingSections } from "../utils";
 import { Markdown } from "../Markdown";
 import { NotebookViewer } from "../NotebookViewer";
@@ -69,14 +69,20 @@ export default function DemoSection() {
                   </div>
                 )}
                 <NotebookViewer sections={parsed.sections} />
-                <div aria-hidden="true" className="pointer-events-none mt-3 flex items-center justify-between gap-2 border-t border-editorial-line-light pt-2.5 select-none">
-                  <span className="flex items-center gap-1.5 rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage">
+                {/* The real deep-view action row: one wrapping cluster, Listen
+                    floats right only at sm+. Kept in step with App.tsx so the
+                    demo shows today's product, not a past version of it. */}
+                <div aria-hidden="true" className="pointer-events-none mt-3 flex flex-wrap items-center gap-1.5 border-t border-editorial-line-light pt-2.5 select-none">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage">
                     <Sparkles size={12} /> Still fuzzy?
                   </span>
-                  <span className="hidden items-center gap-1.5 rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage sm:flex">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage">
                     <CheckCircle2 size={12} /> Deep-check
                   </span>
-                  <span className="flex items-center gap-1.5 rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage">
+                    <BookMarked size={12} /> Save lines
+                  </span>
+                  <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-editorial-line-light bg-editorial-stone px-3 py-1 text-xs text-editorial-sage sm:ml-auto">
                     <Volume2 size={12} /> Listen
                   </span>
                 </div>
