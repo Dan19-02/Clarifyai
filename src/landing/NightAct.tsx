@@ -138,9 +138,9 @@ export default function NightAct({ onAuth }: NightActProps) {
               {...(reduce ? {} : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.8, delay: 1.05, ease: "easeOut" } })}
               className="landing-pretty mx-auto mt-7 max-w-xl text-base leading-relaxed text-chalk-dim md:text-lg"
             >
-              Clarify.AI catches what you miss: a patient AI teacher that explains it
-              again and again, a different way each time, until it clicks. Built for
-              CBSE, ICSE, State boards, JEE and NEET.
+              Clarify.AI catches what you miss: a patient AI teacher and doubt solver
+              that explains it again and again, a different way each time, until it
+              clicks. Built for CBSE, ICSE, State boards, JEE and NEET, class 6 to 12.
             </motion.p>
             <motion.div
               {...(reduce ? {} : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.8, delay: 1.35, ease: "easeOut" } })}

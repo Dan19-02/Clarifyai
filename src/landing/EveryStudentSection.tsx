@@ -39,8 +39,9 @@ export default function EveryStudentSection() {
           </h2>
           <p className="landing-pretty mt-5 text-[15px] leading-relaxed text-editorial-charcoal/70 md:text-base">
             Not a generic chatbot with a syllabus stapled on. Tell it your board,
-            your grade, your language and the analogies that make sense in your
-            life, and every answer is shaped by them.
+            your grade from class 6 to 12, your language and the analogies that make
+            sense in your life, and every answer, across Physics, Chemistry, Maths
+            and Biology, is shaped by them.
           </p>
         </div>
 
