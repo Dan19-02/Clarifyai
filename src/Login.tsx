@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { GraduationCap, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "./AuthContext";
+import { SUPPORT_EMAIL } from "./defaults";
 
 const BOARDS = ["CBSE", "ICSE", "State Board", "JEE", "NEET", "None"];
 const LANGUAGES = ["English", "Hinglish", "Hindi"];
@@ -229,6 +230,13 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
 
         <p className="mt-6 text-center text-[11px] leading-relaxed text-editorial-charcoal/40">
           You can change any of these later in Study Preferences. 🌱
+        </p>
+        <p className="mt-2 text-center text-[11px] leading-relaxed text-editorial-charcoal/40">
+          Stuck signing in? Write to{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-editorial-sage underline underline-offset-2 hover:text-editorial-charcoal">
+            {SUPPORT_EMAIL}
+          </a>
+          .
         </p>
       </div>
     </div>

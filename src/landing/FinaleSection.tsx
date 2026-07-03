@@ -7,6 +7,7 @@
 import { Check } from "lucide-react";
 import { DRIFT_WORDS } from "./words";
 import type { AuthMode } from "./Landing";
+import { SUPPORT_EMAIL } from "../defaults";
 
 interface FinaleSectionProps {
   onAuth: (mode: AuthMode) => void;
@@ -60,15 +61,22 @@ export function LandingFooter({ onAuth }: FinaleSectionProps) {
             <p className="text-[13px] text-chalk-dim">A patient teacher for every student in India.</p>
           </div>
         </div>
-        <nav className="flex items-center gap-6" aria-label="Footer">
+        <nav className="flex flex-wrap items-center gap-6" aria-label="Footer">
           <a href="#watch" className={link}>Watch it teach</a>
           <a href="#pricing" className={link}>Pricing</a>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className={link}>Support</a>
           <button onClick={() => onAuth("login")} className={link}>
             Sign in
           </button>
         </nav>
       </div>
-      <p className="mx-auto mt-8 max-w-6xl text-[12px] text-chalk-dim">&copy; 2026 Clarify.AI</p>
+      <p className="mx-auto mt-8 max-w-6xl text-[12px] text-chalk-dim">
+        &copy; 2026 Clarify.AI · Questions, payments, anything at all:{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-chalk-dim underline underline-offset-2 transition-colors hover:text-chalk">
+          {SUPPORT_EMAIL}
+        </a>
+        , the only address we answer from.
+      </p>
     </footer>
   );
 }

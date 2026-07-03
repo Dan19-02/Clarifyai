@@ -42,7 +42,7 @@ import {
 } from "./utils";
 import { useAuth } from "./AuthContext";
 import { api, getToken, ApiError } from "./api";
-import { DEFAULT_CHAPTERS, makeDefaultProfile } from "./defaults";
+import { DEFAULT_CHAPTERS, makeDefaultProfile, SUPPORT_EMAIL } from "./defaults";
 import { Markdown } from "./Markdown";
 import { NotebookViewer } from "./NotebookViewer";
 import UpgradeModal from "./UpgradeModal";
@@ -1388,6 +1388,14 @@ export default function App() {
                   <button type="button" onClick={() => setIsEditingProfile(false)} className="px-5 py-2.5 border border-editorial-line text-editorial-charcoal hover:bg-editorial-stone rounded-full text-sm transition-colors cursor-pointer">Cancel</button>
                   <button type="submit" className="px-5 py-2.5 bg-editorial-charcoal hover:bg-editorial-charcoal/90 text-white rounded-full text-sm transition-colors cursor-pointer">Save changes</button>
                 </div>
+
+                <p className="border-t border-editorial-line-light pt-3 text-center text-[11px] text-editorial-charcoal/50">
+                  Need help with anything, including payments? Write to{" "}
+                  <a href={`mailto:${SUPPORT_EMAIL}`} className="text-editorial-sage underline underline-offset-2 hover:text-editorial-charcoal">
+                    {SUPPORT_EMAIL}
+                  </a>
+                  . It is the only address we answer.
+                </p>
               </form>
             </motion.div>
           </div>

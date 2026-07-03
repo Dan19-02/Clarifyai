@@ -9,6 +9,7 @@
  */
 import { api, type Account } from "./api";
 import type { Subscription } from "./types";
+import { SUPPORT_EMAIL } from "./defaults";
 
 declare global {
   interface Window {
@@ -79,7 +80,7 @@ export async function startCheckout(plan: string, account: Account, cb: Checkout
         // account, the server-side webhook usually activates the plan by itself.
         cb.onError?.(
           err?.message ||
-            "We could not confirm your payment just now. If money left your account, your plan usually switches on by itself within a few minutes; if it does not, contact us and we will set it right."
+            `We could not confirm your payment just now. If money left your account, your plan usually switches on by itself within a few minutes; if it does not, write to ${SUPPORT_EMAIL} and we will set it right.`
         );
       }
     },

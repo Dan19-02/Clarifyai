@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { Account } from "./api";
 import type { Subscription } from "./types";
 import { startCheckout } from "./billing";
+import { SUPPORT_EMAIL } from "./defaults";
 
 interface UiPlan {
   id: "starter" | "regular" | "unlimited";
@@ -218,7 +219,11 @@ export default function UpgradeModal({ open, onClose, account, subscription, rea
             <p className="mt-4 text-[11px] leading-relaxed text-editorial-charcoal/55">
               A one-time payment for 30 days of access. No auto-renewal: you decide each month.
               Buying a plan ends the free week and your plan starts right away.
-              Prices in INR, secure checkout by Razorpay.
+              Prices in INR, secure checkout by Razorpay. Payment trouble or any question:{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-editorial-sage underline underline-offset-2 hover:text-editorial-charcoal">
+                {SUPPORT_EMAIL}
+              </a>
+              , the only place we answer.
             </p>
           </motion.div>
         </div>
