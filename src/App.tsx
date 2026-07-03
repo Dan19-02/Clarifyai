@@ -29,7 +29,8 @@ import {
   ChatMessage,
   ChapterProgress,
   StudentProfile,
-  Conversation
+  Conversation,
+  Subscription
 } from "./types";
 import {
   float32ToInt16PCM,
@@ -40,10 +41,11 @@ import {
   dataUrlToBase64
 } from "./utils";
 import { useAuth } from "./AuthContext";
-import { api, getToken } from "./api";
+import { api, getToken, ApiError } from "./api";
 import { DEFAULT_CHAPTERS, makeDefaultProfile } from "./defaults";
 import { Markdown } from "./Markdown";
 import { NotebookViewer } from "./NotebookViewer";
+import UpgradeModal from "./UpgradeModal";
 
 // The public landing site is only for signed-out visitors, so it loads as its
 // own chunk and never weighs down a student's session.
@@ -71,8 +73,36 @@ const ACTION_PILL =
 
 type MobileView = "study" | "chat";
 
+// Can the student start a NEW question right now, judging from the cached
+// subscription? The server is the real authority; this only avoids a doomed
+// request and shows the paywall instantly. If the quota window has already
+// rolled over (resetAt in the past), we let the request through so the server
+// can refresh, rather than block on stale numbers.
+function canAskNew(sub?: Subscription): boolean {
+  if (!sub) return true;
+  if (sub.resetAt && Date.parse(sub.resetAt) <= Date.now()) return true;
+  return sub.active && (sub.remaining === null || sub.remaining > 0);
+}
+
+// Client mirror of the server's paywallMessage, for the instant soft-block.
+function blockedReason(sub?: Subscription): string {
+  if (!sub) return "Please choose a plan to keep learning.";
+  if (sub.state === "trial")
+    return "That is all 10 free questions for today. They refresh tomorrow morning, or you can unlock a plan to keep going right now.";
+  if (sub.state === "active")
+    return `You have used all ${sub.limit} questions on your ${sub.planName} plan this month. Upgrade any time to keep learning.`;
+  if (sub.state === "plan_expired")
+    return `Your ${sub.planName} pass has ended. Renew it to pick up right where you left off.`;
+  return "Your free week is complete. Choose a plan to keep your patient teacher going, at any hour, as many times as you need.";
+}
+
 export default function App() {
-  const { account, loading: authLoading, logout } = useAuth();
+  const { account, loading: authLoading, logout, applySubscription, refreshSubscription } = useAuth();
+  const subscription = account?.subscription;
+
+  // Paywall / plan chooser.
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState<string>("");
 
   // Profile + study log come from the signed-in account.
   const [profile, setProfile] = useState<StudentProfile>(() => makeDefaultProfile());
@@ -282,12 +312,27 @@ export default function App() {
     const isFirstMessage = chatHistory.length === 0;
     const deep = opts?.deep === true;
 
+    // A new question (first in a thread, not a deep dive) is what costs a credit.
+    // Follow-ups, "still fuzzy" re-explains, and deep dives are always free.
+    const isNewQuestion = isFirstMessage && !deep && (Boolean(text) || atts.length > 0);
+    if (isNewQuestion && !canAskNew(subscription)) {
+      // Heal a stale snapshot too (e.g. the plan was activated on another
+      // device or by the payment webhook): the refreshed usage re-renders the
+      // modal's status line, and the next attempt passes if access returned.
+      refreshSubscription().catch(() => {});
+      setUpgradeReason(blockedReason(subscription));
+      setShowUpgrade(true);
+      return;
+    }
+
+    let userMsgId: string | null = null;
     if (!opts?.silent) {
       setInputText("");
       setAttachments([]);
 
+      userMsgId = `user-${Date.now()}`;
       const userMsg: ChatMessage = {
-        id: `user-${Date.now()}`,
+        id: userMsgId,
         role: "user",
         text,
         timestamp: new Date().toLocaleTimeString(),
@@ -317,6 +362,29 @@ export default function App() {
       setChatHistory((prev) =>
         prev.map((m) => (m.id === streamId ? (typeof patch === "function" ? patch(m) : { ...m, ...patch }) : m))
       );
+
+    // The student ran out of trial / quota: refresh the usage, open the plan
+    // chooser, and fully unwind the blocked ask: bubbles off the screen, the
+    // optimistically saved message deleted server-side (an orphan would make
+    // the next ask in this thread look like a free follow-up), the auto-title
+    // reverted, and the typed question handed back to the input box.
+    const handlePaywall = (sub: Subscription | undefined, message: string) => {
+      if (sub) applySubscription(sub);
+      else refreshSubscription();
+      setUpgradeReason(message || blockedReason(sub));
+      setShowUpgrade(true);
+      if (activeIdRef.current === convId) {
+        setChatHistory((prev) => prev.filter((m) => m.id !== streamId && m.id !== userMsgId));
+        if (!opts?.silent && text) setInputText(text);
+      }
+      if (userMsgId) {
+        api.deleteMessage(convId, userMsgId).catch(() => {});
+        if (isFirstMessage && text) {
+          bumpConversation(convId, { title: "New chat", messageCount: 0 });
+          api.renameConversation(convId, "New chat").catch(() => {});
+        }
+      }
+    };
 
     try {
       // Deep requests go with a clean history: the notebook is self-contained,
@@ -377,6 +445,13 @@ export default function App() {
         }
       }
 
+      // The stream reported the student is out of trial / quota: stop here and
+      // show the plan chooser (do NOT fall back to /chat, which would re-block).
+      if (streamResult && streamResult.kind === "paywall") {
+        handlePaywall(streamResult.subscription, streamResult.error);
+        return;
+      }
+
       if (streamResult && streamResult.kind === "done") {
         finalize({
           id: `model-${Date.now()}`,
@@ -403,7 +478,15 @@ export default function App() {
           verification: data.verification
         });
       }
+
+      // A new question was charged server-side: refresh the usage display.
+      if (isNewQuestion) refreshSubscription().catch(() => {});
     } catch (error: any) {
+      // Out of trial / quota on the /chat path: show the plan chooser, not an error.
+      if (error instanceof ApiError && error.code === "payment_required") {
+        handlePaywall(error.subscription, error.message);
+        return;
+      }
       console.error(error);
       // Errors surface only in the conversation that asked the question.
       if (activeIdRef.current === convId) {
@@ -730,6 +813,13 @@ export default function App() {
           <span className="hidden md:block text-xs text-editorial-charcoal/50 mr-1">
             {profile.name} · {profile.board}
           </span>
+          <UsagePill
+            subscription={subscription}
+            onClick={() => {
+              setUpgradeReason("");
+              setShowUpgrade(true);
+            }}
+          />
           <button
             onClick={() => {
               setEditProfileForm({ ...profile });
@@ -1193,6 +1283,22 @@ export default function App() {
         ))}
       </nav>
 
+      {/* Plan chooser / paywall */}
+      {account && (
+        <UpgradeModal
+          open={showUpgrade}
+          onClose={() => setShowUpgrade(false)}
+          account={account}
+          subscription={subscription}
+          reason={upgradeReason}
+          onActivated={(sub) => {
+            applySubscription(sub);
+            setShowUpgrade(false);
+            setUpgradeReason("");
+          }}
+        />
+      )}
+
       {/* Preferences modal */}
       <AnimatePresence>
         {isEditingProfile && (
@@ -1288,6 +1394,50 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// Compact plan + usage chip in the header. Tapping it opens the plan chooser so
+// a student can upgrade or renew at any time. Turns amber when access has run
+// out, so the state is honest at a glance without ever nagging. Rendered on
+// EVERY screen size (phones are the primary audience) with a shorter label on
+// small screens, because this is the only voluntary path to plans and usage.
+function UsagePill({ subscription, onClick }: { subscription?: Subscription; onClick: () => void }) {
+  let label = "Plans";
+  let shortLabel = "Plans";
+  let alert = false;
+  if (subscription) {
+    const { state, planName, remaining } = subscription;
+    if (state === "trial") {
+      const left = remaining ?? 0;
+      label = `Trial · ${left} left today`;
+      shortLabel = `${left} today`;
+      alert = left <= 0;
+    } else if (state === "active") {
+      label = remaining == null ? `${planName} · Unlimited` : `${planName} · ${remaining} left`;
+      shortLabel = remaining == null ? "Unlimited" : `${remaining} left`;
+      alert = remaining != null && remaining <= 0;
+    } else {
+      label = state === "plan_expired" ? "Renew plan" : "Choose a plan";
+      shortLabel = state === "plan_expired" ? "Renew" : "Plans";
+      alert = true;
+    }
+  }
+  return (
+    <button
+      onClick={onClick}
+      title="View plans and usage"
+      id="btn-usage-plan"
+      className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
+        alert
+          ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+          : "border-editorial-line text-editorial-charcoal/70 hover:bg-editorial-stone"
+      }`}
+    >
+      <Sparkles size={13} className={alert ? "text-amber-600" : "text-editorial-sage"} />
+      <span className="whitespace-nowrap hidden md:inline">{label}</span>
+      <span className="whitespace-nowrap md:hidden">{shortLabel}</span>
+    </button>
   );
 }
 

@@ -13,15 +13,15 @@ const PLANS = [
   {
     name: "Starter",
     price: "₹199",
-    queries: "150 queries a month",
-    note: "About five questions a day. Room to breathe for daily doubts.",
+    queries: "100 queries a month",
+    note: "About three questions a day. Room to breathe for daily doubts.",
     featured: false,
   },
   {
     name: "Regular",
     price: "₹499",
-    queries: "400 queries a month",
-    note: "Serious study fuel: enough for daily learning and exam season revision.",
+    queries: "300 queries a month",
+    note: "Serious study fuel: ten a day for daily learning and exam season revision.",
     featured: false,
   },
   {
@@ -51,8 +51,10 @@ export default function PricingSection({ onAuth }: PricingSectionProps) {
             Priced like a notebook, not a coaching class.
           </h2>
           <p className="landing-pretty mt-5 text-[15px] leading-relaxed text-editorial-charcoal/70 md:text-base">
-            From ₹199 a month for a teacher who never runs out of patience.
-            One query is one question answered.
+            Every new student gets one week free from the day they join: up to 10
+            questions a day, never more, no card needed. After that, from ₹199 a
+            month for a teacher who never runs out of patience. One query is one
+            question answered.
           </p>
         </div>
 
@@ -102,8 +104,10 @@ export default function PricingSection({ onAuth }: PricingSectionProps) {
           </ul>
         </div>
         <p className="mt-6 text-[13px] text-editorial-charcoal/65">
-          Prices in INR. Every new account is free while we are in early access;
-          plans switch on at public launch, and you will be able to cancel anytime.
+          Prices in INR. Every new account starts with one free week, up to 10
+          questions a day. Each plan is a one-time payment for 30 days, with no
+          auto-renewal: you choose again each month. Buying a plan ends the free
+          week and your plan starts right away. Secure checkout by Razorpay.
         </p>
       </div>
     </section>

@@ -49,6 +49,22 @@ export interface ChapterProgress {
   lastStudied: string;
 }
 
+/** The student's plan + live usage, resolved by the backend on every request. */
+export interface Subscription {
+  plan: "trial" | "starter" | "regular" | "unlimited";
+  planName: string;
+  state: "trial" | "active" | "trial_expired" | "plan_expired";
+  /** Can a new question be asked right now (before checking remaining)? */
+  active: boolean;
+  limit: number | null; // questions this period, null = unlimited
+  used: number;
+  remaining: number | null; // null = unlimited
+  periodType: "day" | "pass" | "none";
+  resetAt: string | null; // ISO: when the quota refreshes / access ends
+  trialEndsAt: string | null;
+  planExpiresAt: string | null;
+}
+
 export interface StudentProfile {
   name: string;
   board: string; // CBSE, ICSE, State Boards, JEE, NEET, None

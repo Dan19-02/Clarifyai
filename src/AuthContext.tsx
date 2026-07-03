@@ -5,6 +5,7 @@
  */
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api, getToken, setToken, type Account, type SignupInput } from "./api";
+import type { Subscription } from "./types";
 
 interface AuthContextValue {
   account: Account | null;
@@ -13,6 +14,10 @@ interface AuthContextValue {
   signup: (input: SignupInput) => Promise<void>;
   logout: () => void;
   setAccount: (a: Account) => void;
+  /** Merge a fresh plan/usage snapshot into the signed-in account. */
+  applySubscription: (sub: Subscription) => void;
+  /** Pull the latest plan/usage from the server (after asking or paying). */
+  refreshSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -51,8 +56,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccount(null);
   };
 
+  const applySubscription = (sub: Subscription) =>
+    setAccount((prev) => (prev ? { ...prev, subscription: sub } : prev));
+
+  const refreshSubscription = async () => {
+    try {
+      const { subscription } = await api.getSubscription();
+      applySubscription(subscription);
+    } catch {
+      /* non-fatal: the usage display just stays as-is until the next refresh */
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ account, loading, login, signup, logout, setAccount }}>
+    <AuthContext.Provider
+      value={{ account, loading, login, signup, logout, setAccount, applySubscription, refreshSubscription }}
+    >
       {children}
     </AuthContext.Provider>
   );

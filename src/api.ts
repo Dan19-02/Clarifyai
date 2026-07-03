@@ -3,10 +3,26 @@
  * Stores the JWT in localStorage and attaches it as a Bearer token.
  * All requests go to /api/* (proxied to the backend by Vite in dev).
  */
-import type { StudentProfile, ChapterProgress, ChatMessage, Conversation } from "./types";
+import type { StudentProfile, ChapterProgress, ChatMessage, Conversation, Subscription } from "./types";
 
 const TOKEN_KEY = "clarify_token";
 const API_BASE = import.meta.env.VITE_API_URL || "";
+
+/** An error from the API that carries the HTTP status and, for a blocked
+ *  question (402), the machine-readable code plus the current subscription so
+ *  the UI can open the upgrade flow with an accurate usage snapshot. */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  subscription?: Subscription;
+  constructor(message: string, status: number, code?: string, subscription?: Subscription) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.subscription = subscription;
+  }
+}
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -21,6 +37,35 @@ export interface Account {
   email: string;
   profile: StudentProfile;
   chapters: ChapterProgress[];
+  subscription?: Subscription;
+}
+
+export interface PlanInfo {
+  id: "starter" | "regular" | "unlimited";
+  name: string;
+  price: number;
+  amountPaise: number;
+  monthlyQueries: number | null;
+  blurb: string;
+}
+
+export interface PlansResponse {
+  plans: PlanInfo[];
+  trial: { days: number; dailyQueries: number };
+  passDays: number;
+  configured: boolean;
+  currency: string;
+}
+
+/** What the backend returns to open Razorpay Checkout for a plan. */
+export interface OrderResponse {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
+  plan: string;
+  planName: string;
+  prefill: { email: string; name: string };
 }
 
 export interface SignupInput {
@@ -52,14 +97,20 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   if (!res.ok) {
     // Token rejected → clear it so the app drops back to the login screen.
     if (res.status === 401) setToken(null);
-    throw new Error((data as any).error || `Request failed (${res.status})`);
+    throw new ApiError(
+      (data as any).error || `Request failed (${res.status})`,
+      res.status,
+      (data as any).code,
+      (data as any).subscription
+    );
   }
   return data as T;
 }
 
 export type ChatStreamResult =
   | { kind: "done"; text: string; sources: any[]; verification?: "passed" | "unavailable" }
-  | { kind: "fallback"; reason: string };
+  | { kind: "fallback"; reason: string }
+  | { kind: "paywall"; error: string; subscription?: Subscription };
 
 /**
  * Streaming chat (SSE over fetch, POST /chat/stream). onDelta receives each
@@ -103,6 +154,7 @@ async function chatStream(
       else if (msg.type === "checking") onChecking();
       else if (msg.type === "done") return { kind: "done", text: msg.text, sources: msg.sources || [], verification: msg.verification };
       else if (msg.type === "fallback") return { kind: "fallback", reason: msg.reason || "" };
+      else if (msg.type === "paywall") return { kind: "paywall", error: msg.error || "", subscription: msg.subscription };
       else if (msg.type === "error") throw new Error(msg.error || "Stream error");
     }
   }
@@ -118,6 +170,18 @@ export const api = {
   updateMe: (body: StudentProfile & { chapters: ChapterProgress[] }) =>
     request<{ user: Account }>("/me", { method: "PUT", body: JSON.stringify(body) }),
 
+  // Billing (Razorpay one-time monthly pass)
+  getPlans: () => request<PlansResponse>("/billing/plans"),
+  getSubscription: () => request<{ subscription: Subscription }>("/subscription"),
+  createOrder: (plan: string) =>
+    request<OrderResponse>("/billing/order", { method: "POST", body: JSON.stringify({ plan }) }),
+  verifyPayment: (body: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    plan: string;
+  }) => request<{ ok: boolean; subscription: Subscription }>("/billing/verify", { method: "POST", body: JSON.stringify(body) }),
+
   // Conversations (separate chat windows)
   listConversations: () => request<{ conversations: Conversation[] }>("/conversations"),
   createConversation: (title?: string) =>
@@ -131,6 +195,9 @@ export const api = {
     conversationId: string,
     msg: { id: string; role: string; text: string; mode?: string; sources?: any[]; attachments?: any[] }
   ) => request(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(msg) }),
+  /** Unwind an optimistically saved question that the paywall blocked. */
+  deleteMessage: (conversationId: string, messageId: string) =>
+    request(`/conversations/${conversationId}/messages/${messageId}`, { method: "DELETE" }),
 
   chat: (body: any) =>
     request<{ text: string; sources: any[]; cached?: boolean; verification?: "passed" | "unavailable" }>("/chat", {
