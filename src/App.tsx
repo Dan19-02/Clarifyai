@@ -474,6 +474,16 @@ export default function App() {
       // becomes every student's instant notebook.
       const serverHistory = deep ? [] : chatHistory.slice(-10).map((m) => ({ role: m.role, text: m.text }));
       const images = atts.map((a) => ({ data: dataUrlToBase64(a.dataUrl), mimeType: a.mimeType }));
+      // The student's study log personalizes the answer: weak chapters first
+      // (they need the connection most), then the most recently studied. The
+      // backend keeps personalized answers out of the shared cache.
+      const recentTopics = [...chapters]
+        .sort((a, b) => {
+          const weakFirst = Number(a.mastery === "weak" ? 0 : 1) - Number(b.mastery === "weak" ? 0 : 1);
+          return weakFirst !== 0 ? weakFirst : (b.lastStudied || "").localeCompare(a.lastStudied || "");
+        })
+        .slice(0, 6)
+        .map((ch) => `${ch.name}${ch.mastery === "weak" ? " (finding it hard)" : ""}`);
       const baseBody = {
         message: text,
         history: serverHistory,
@@ -481,6 +491,7 @@ export default function App() {
         grade: profile.grade,
         language: profile.language,
         preferredAnalogy: profile.preferredAnalogy,
+        recentTopics,
         deep,
         images
       };
@@ -545,12 +556,9 @@ export default function App() {
         });
       } else {
         // Plain /chat: the proven whole-answer path (also the stream's safety
-        // net). After a failed stream, skip MiniMax so the student is not made
-        // to sit through a second timeout before the Gemini fallback.
-        const data = await api.chat({
-          ...baseBody,
-          avoidOpenSource: streamResult?.kind === "fallback" && streamResult.reason === "stream-failed"
-        });
+        // net). Same Gemini brain either way, so a failed stream just retries
+        // as a whole answer.
+        const data = await api.chat(baseBody);
         finalize({
           id: `model-${Date.now()}`,
           role: "model",
