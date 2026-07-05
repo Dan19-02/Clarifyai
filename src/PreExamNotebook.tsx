@@ -130,7 +130,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
           <h2 className="truncate font-serif text-lg italic text-editorial-charcoal">
             {level.view === "points" ? level.chapter : level.view === "chapters" ? level.subject : "Pre-exam notebook"}
           </h2>
-          <p className="truncate text-[11px] text-editorial-charcoal/50">
+          <p className="truncate text-[11px] text-editorial-charcoal/70">
             {level.view === "subjects"
               ? "The lines you chose to keep, filed and ready for revision."
               : level.view === "chapters"
@@ -172,7 +172,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                   ? `${summary.savedCount} saved point${summary.savedCount === 1 ? "" : "s"} waiting for you.`
                   : "Your revision shelf, ready when you are."}
               </h3>
-              <p className="text-sm leading-relaxed text-editorial-charcoal/65">
+              <p className="text-sm leading-relaxed text-editorial-charcoal/70">
                 Keep saving the lines that make things click; they are filed safely under their subject and chapter.
                 The Pre-exam notebook opens on the Regular and Unlimited plans, with Clarify notes that turn your
                 points into one revision sheet per chapter.
@@ -194,7 +194,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                 <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-14 text-center">
                   <BookMarked size={26} className="text-editorial-sage" />
                   <h3 className="font-serif text-xl italic text-editorial-charcoal">Nothing saved yet.</h3>
-                  <p className="text-sm leading-relaxed text-editorial-charcoal/65">
+                  <p className="text-sm leading-relaxed text-editorial-charcoal/70">
                     When an answer makes something click, select the lines you want to keep and tap Save lines.
                     They will file themselves here, ready for revision.
                   </p>
@@ -209,7 +209,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                     >
                       <div>
                         <h3 className="font-serif text-lg italic text-editorial-charcoal">{s.subject}</h3>
-                        <p className="mt-1 text-xs text-editorial-charcoal/55">
+                        <p className="mt-1 text-xs text-editorial-charcoal/70">
                           {s.chapters.length} chapter{s.chapters.length === 1 ? "" : "s"} · {s.count} point{s.count === 1 ? "" : "s"}
                         </p>
                       </div>
@@ -232,7 +232,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                 >
                   <div>
                     <h4 className="text-sm font-semibold text-editorial-charcoal">{c.chapter}</h4>
-                    <p className="mt-0.5 text-[11px] text-editorial-charcoal/55">
+                    <p className="mt-0.5 text-[11px] text-editorial-charcoal/70">
                       {c.count} saved point{c.count === 1 ? "" : "s"}
                     </p>
                   </div>
@@ -276,7 +276,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                   </button>
                 </div>
                 {notesBusy && (
-                  <p className="mt-3 text-xs leading-relaxed text-editorial-charcoal/55">
+                  <p className="mt-3 text-xs leading-relaxed text-editorial-charcoal/70">
                     Turning your {entries.length} saved point{entries.length === 1 ? "" : "s"} into one revision
                     sheet. This takes a moment; the full sheet appears at once.
                   </p>
@@ -284,14 +284,14 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                 {note && !notesBusy && (
                   <div className="mt-4 border-t border-editorial-line-light pt-4 text-sm leading-relaxed text-editorial-charcoal">
                     <Markdown>{note.text}</Markdown>
-                    <p className="mt-3 text-[10px] text-editorial-charcoal/45">
+                    <p className="mt-3 text-[10px] text-editorial-charcoal/60">
                       Prepared {new Date(note.generatedAt).toLocaleString()}
                       {note.stale ? " · you have saved new points since, refresh when ready" : ""}
                     </p>
                   </div>
                 )}
                 {!note && !notesBusy && (
-                  <p className="mt-3 text-xs leading-relaxed text-editorial-charcoal/55">
+                  <p className="mt-3 text-xs leading-relaxed text-editorial-charcoal/70">
                     One tap turns everything you saved in this chapter into a single marks-style revision sheet.
                   </p>
                 )}
@@ -302,7 +302,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                 {entries.map((e) => (
                   <div key={e.id} className="group rounded-2xl border border-editorial-line-light bg-white p-4">
                     {e.question && (
-                      <p className="mb-1.5 text-[11px] italic text-editorial-charcoal/45">from: "{e.question.slice(0, 120)}"</p>
+                      <p className="mb-1.5 text-[11px] italic text-editorial-charcoal/60">from: "{e.question.slice(0, 120)}"</p>
                     )}
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1 text-sm leading-relaxed text-editorial-charcoal">
@@ -320,7 +320,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                   </div>
                 ))}
                 {entries.length === 0 && !loading && (
-                  <p className="py-6 text-center text-sm text-editorial-charcoal/50">No points left in this chapter.</p>
+                  <p className="py-6 text-center text-sm text-editorial-charcoal/70">No points left in this chapter.</p>
                 )}
               </div>
             </div>

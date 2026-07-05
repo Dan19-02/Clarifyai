@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { GraduationCap, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "./AuthContext";
+import { useGoogleButton } from "./googleSignIn";
 import { SUPPORT_EMAIL } from "./defaults";
 
 const BOARDS = ["CBSE", "ICSE", "State Board", "JEE", "NEET", "None"];
@@ -20,7 +21,7 @@ interface LoginProps {
 }
 
 export default function Login({ initialMode = "login", onBack }: LoginProps) {
-  const { login, signup } = useAuth();
+  const { login, loginWithGoogle, signup } = useAuth();
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const backRef = useRef<HTMLButtonElement | null>(null);
 
@@ -31,6 +32,21 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
   }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // "Continue with Google": the button hands us a credential we exchange for a
+  // session. Only appears when VITE_GOOGLE_CLIENT_ID is configured.
+  const google = useGoogleButton(async (credential) => {
+    setError(null);
+    setBusy(true);
+    try {
+      await loginWithGoogle(credential);
+      // On success the AuthProvider sets the account and the app re-renders.
+    } catch (err: any) {
+      setError(err?.message || "Could not sign in with Google. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }, mode === "signup" ? "signup_with" : "continue_with");
 
   // Shared
   const [email, setEmail] = useState("");
@@ -119,6 +135,20 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
               </button>
             ))}
           </div>
+
+          {google.enabled && (
+            <div className="mb-5">
+              <div
+                ref={google.ref}
+                className={`flex justify-center [color-scheme:light] ${busy ? "pointer-events-none opacity-60" : ""}`}
+              />
+              <div className="mt-4 flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-editorial-line-light" />
+                <span className="text-[11px] uppercase tracking-[0.1em] text-editorial-charcoal/45">or</span>
+                <span className="h-px flex-1 bg-editorial-line-light" />
+              </div>
+            </div>
+          )}
 
           <form onSubmit={submit} className="flex flex-col gap-3">
             {mode === "signup" && (

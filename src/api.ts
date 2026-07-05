@@ -13,6 +13,9 @@ import type {
   NotebookEntry,
   ClarifyNote,
 } from "./types";
+// DEV-ONLY preview harness; the reference below sits inside an
+// `import.meta.env.DEV` branch so production builds tree-shake it out.
+import { isPreview, installPreviewMocks } from "./previewMock";
 
 const TOKEN_KEY = "clarify_token";
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -175,6 +178,9 @@ export const api = {
     request<{ token: string; user: Account }>("/auth/signup", { method: "POST", body: JSON.stringify(body) }),
   login: (email: string, password: string) =>
     request<{ token: string; user: Account }>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  /** Exchange a Google Identity credential (ID token) for an app session. */
+  googleAuth: (credential: string) =>
+    request<{ token: string; user: Account }>("/auth/google", { method: "POST", body: JSON.stringify({ credential }) }),
   me: () => request<{ user: Account }>("/me"),
   updateMe: (body: StudentProfile & { chapters: ChapterProgress[] }) =>
     request<{ user: Account }>("/me", { method: "PUT", body: JSON.stringify(body) }),
@@ -234,3 +240,9 @@ export const api = {
     }),
   tts: (body: { text: string; voice: string }) => request<{ audio: string }>("/tts", { method: "POST", body: JSON.stringify(body) }),
 };
+
+// DEV-ONLY: `?preview=1` renders the signed-in workspace with seeded data and
+// no backend. Runs synchronously at module load so the mocks are in place
+// before AuthContext restores the session. Compiled out of production builds
+// (import.meta.env.DEV is statically false, so the branch is tree-shaken).
+if (import.meta.env.DEV && isPreview()) installPreviewMocks(api);

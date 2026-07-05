@@ -18,7 +18,7 @@ export function NotebookViewer({ sections }: NotebookViewerProps) {
 
   return (
     <div className="flex flex-col gap-4 max-w-full my-1">
-      <div className="bg-editorial-stone border border-editorial-line-light p-3 rounded-xl flex items-center justify-between">
+      <div className="bg-editorial-stone border border-editorial-line-light border-t-2 border-t-editorial-sage/40 p-3 rounded-xl flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BookOpen size={15} className="text-editorial-sage shrink-0" />
           <span className="text-xs font-semibold text-editorial-charcoal">Study Notebook</span>
@@ -34,7 +34,7 @@ export function NotebookViewer({ sections }: NotebookViewerProps) {
               aria-pressed={activeTabIdx === idx}
               onClick={() => setActiveTabIdx(idx)}
               className={`flex items-center gap-2 px-3 py-2 rounded-full text-left text-xs font-medium transition-all shrink-0 md:w-full border cursor-pointer ${
-                activeTabIdx === idx ? "bg-editorial-sage text-white border-editorial-sage" : "bg-white text-editorial-charcoal/60 hover:text-editorial-charcoal hover:bg-editorial-stone/50 border-editorial-line-light"
+                activeTabIdx === idx ? "bg-editorial-sage text-white border-editorial-sage" : "bg-transparent text-editorial-charcoal/70 hover:text-editorial-charcoal hover:bg-editorial-stone/50 border-editorial-line-light"
               }`}
             >
               <span className="text-sm shrink-0">{sec.emoji}</span>
@@ -43,9 +43,15 @@ export function NotebookViewer({ sections }: NotebookViewerProps) {
           ))}
         </div>
 
-        <div className="flex-1 bg-white border border-editorial-line rounded-2xl p-4 md:p-5 flex flex-col gap-2 min-w-0 max-w-full relative overflow-y-auto">
+        <div className="flex-1 bg-white border border-editorial-line-light border-t-2 border-t-editorial-sage/25 rounded-2xl p-4 md:p-5 flex flex-col gap-2 min-w-0 max-w-full relative overflow-y-auto">
           {sections[activeTabIdx] && (
-            <motion.div key={activeTabIdx} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col h-full justify-between">
+            <motion.div
+              key={activeTabIdx}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, ease: [0.22, 0.61, 0.36, 1] }}
+              className="flex flex-col h-full justify-between"
+            >
               <div className="space-y-3">
                 <div className="flex items-center gap-2 pb-3 border-b border-editorial-line-light mb-3">
                   <span className="text-xl">{sections[activeTabIdx].emoji}</span>

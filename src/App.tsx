@@ -25,7 +25,7 @@ import {
   ChevronRight,
   BookMarked
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import {
   ChatMessage,
   ChapterProgress,
@@ -55,10 +55,10 @@ const Landing = lazy(() => import("./landing/Landing"));
 import { STUDY_FACTS, FALLBACK_STUDY_FACT, pickFirstFactIndex } from "./facts";
 
 const SUGGESTED_QUERIES = [
-  { label: "Explain Photosynthesis", prompt: "Can you explain photosynthesis simply?" },
-  { label: "Newton's 2nd Law (JEE)", prompt: "Explain Newton's Second Law of Motion at a JEE exam level. Give me a good analogy!" },
-  { label: "Cell Division (NEET)", prompt: "What is the difference between mitosis and meiosis? I am preparing for NEET." },
-  { label: "Quadratic Equations", prompt: "How do I find the roots of a quadratic equation?" }
+  { label: "Explain Photosynthesis", prompt: "Can you explain photosynthesis simply?", hint: "Start with a plain, everyday walk-through." },
+  { label: "Newton's 2nd Law (JEE)", prompt: "Explain Newton's Second Law of Motion at a JEE exam level. Give me a good analogy!", hint: "Exam-level, with an analogy you will remember." },
+  { label: "Cell Division (NEET)", prompt: "What is the difference between mitosis and meiosis? I am preparing for NEET.", hint: "The NEET comparison, side by side." },
+  { label: "Quadratic Equations", prompt: "How do I find the roots of a quadratic equation?", hint: "The method, worked out step by step." }
 ];
 
 const MAX_ATTACHMENTS = 6;
@@ -71,7 +71,12 @@ const STILL_CONFUSED_PROMPT =
   "I still don't fully get it, can you explain that part differently, in a simpler way?";
 
 const ACTION_PILL =
-  "flex items-center gap-1.5 whitespace-nowrap shrink-0 px-3 py-1 rounded-full text-xs transition-all bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-sage border border-editorial-line-light disabled:opacity-40 cursor-pointer";
+  "flex items-center gap-1.5 whitespace-nowrap shrink-0 px-3 py-1 rounded-full text-xs transition-all bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-sage border border-editorial-line-light disabled:opacity-40 cursor-pointer motion-safe:active:scale-[0.97]";
+
+// The stay-until-it-lands loop is the product's heart, so its one-tap retry is
+// the warmest, most inviting action in the row, distinct from the utilities.
+const STILL_FUZZY_PILL =
+  "flex items-center gap-1.5 whitespace-nowrap shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all bg-editorial-sage/12 text-editorial-sage border border-editorial-sage/30 hover:bg-editorial-sage/20 disabled:opacity-40 cursor-pointer motion-safe:active:scale-[0.97]";
 
 type MobileView = "study" | "chat";
 
@@ -290,6 +295,12 @@ export default function App() {
     const el = messagesRef.current;
     const countChanged = chatHistory.length !== prevMsgCount.current;
     prevMsgCount.current = chatHistory.length;
+    // An empty thread shows the arrival state; keep it pinned to the top so the
+    // greeting and monogram stay in view instead of being scrolled past.
+    if (chatHistory.length === 0) {
+      el?.scrollTo({ top: 0 });
+      return;
+    }
     if (!el || countChanged) {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
       return;
@@ -501,7 +512,15 @@ export default function App() {
       // (it reloads from the server if the student comes back later).
       const finalize = (msg: ChatMessage) => {
         if (activeIdRef.current === convId) {
-          setChatHistory((prev) => [...prev.filter((m) => m.id !== streamId), msg]);
+          // If a streaming draft is already on screen, swap its content in
+          // place (keeping its id) so the completed answer settles once and
+          // does not fade out and re-rise on the draft-to-final swap. Only a
+          // genuine first appearance (image path, stream skipped) animates in.
+          setChatHistory((prev) =>
+            prev.some((m) => m.id === streamId)
+              ? prev.map((m) => (m.id === streamId ? { ...msg, id: m.id } : m))
+              : [...prev.filter((m) => m.id !== streamId), msg]
+          );
         }
         api.addMessage(convId, msg).catch(() => {});
       };
@@ -583,8 +602,9 @@ export default function App() {
         const errorMsg: ChatMessage = {
           id: `err-${Date.now()}`,
           role: "model",
-          text: `⚠️ **I hit a small hiccup:** ${error.message || "Something went wrong while connecting to Clarify.AI."}\n\nThis often happens when API limits are exceeded. Let's try again in a moment!`,
-          timestamp: new Date().toLocaleTimeString()
+          text: "I could not finish that one just now. This is on my side, not yours. Give it a moment and ask me again, and I will pick it right back up.",
+          timestamp: new Date().toLocaleTimeString(),
+          isError: true
         };
         setChatHistory((prev) => [...prev.filter((m) => m.id !== streamId), errorMsg]);
       }
@@ -846,7 +866,11 @@ export default function App() {
       return (
         <>
           {preamble && (
-            <div className="mb-3">
+            <div className="mb-4 pb-3 border-b border-editorial-line-light">
+              <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-editorial-sage">
+                <span className="h-px w-4 bg-editorial-sage/50" />
+                Exam-ready answer
+              </div>
               <Markdown>{preamble}</Markdown>
             </div>
           )}
@@ -860,13 +884,13 @@ export default function App() {
   // --- Gated rendering ---
   if (authLoading || (account && dataLoading)) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-editorial-ivory text-editorial-charcoal">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-editorial-sage">
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-5 bg-editorial-ivory text-editorial-charcoal px-6 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-editorial-sage motion-safe:animate-[clarify-breathe_2.2s_ease-in-out_infinite]">
           <span className="font-serif text-2xl italic leading-none text-editorial-ivory">C</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-editorial-charcoal/70">
-          <Loader2 size={15} className="animate-spin" />
-          Preparing your study desk…
+        <div>
+          <p className="text-sm font-medium text-editorial-sage">Preparing your study desk</p>
+          <p className="mt-1 text-xs text-editorial-charcoal/60">One moment. Your notebook and study log are loading.</p>
         </div>
       </div>
     );
@@ -889,6 +913,7 @@ export default function App() {
   }
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="h-[100dvh] bg-editorial-ivory text-editorial-charcoal font-sans flex flex-col antialiased">
       {/* Header */}
       <nav className="flex justify-between items-center px-4 py-3 md:px-8 border-b border-editorial-line bg-editorial-ivory">
@@ -900,7 +925,7 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="hidden md:block text-xs text-editorial-charcoal/50 mr-1">
+          <span className="hidden md:block text-xs text-editorial-charcoal/70 mr-1">
             {profile.name} · {profile.board}
           </span>
           <UsagePill
@@ -949,7 +974,12 @@ export default function App() {
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden max-w-[1500px] w-full mx-auto pb-14 lg:pb-0">
 
         {/* LEFT: Study panel */}
-        <aside className={`${mobileView === "study" ? "flex" : "hidden"} lg:flex w-full lg:w-80 lg:shrink-0 min-h-0 border-r border-editorial-line p-4 md:p-5 flex-col gap-4 bg-editorial-ivory overflow-y-auto`}>
+        <motion.aside
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
+          className={`${mobileView === "study" ? "flex" : "hidden"} lg:flex w-full lg:w-80 lg:shrink-0 min-h-0 border-r border-[color:rgba(90,90,64,0.14)] p-4 md:p-5 flex-col gap-4 bg-editorial-ivory overflow-y-auto`}
+        >
 
           {/* New chat */}
           <button
@@ -961,15 +991,16 @@ export default function App() {
             New chat
           </button>
 
-          {/* Profile details */}
-          <div className="bg-white border border-editorial-line-light rounded-2xl p-4 flex flex-col gap-3 shadow-sm">
+          {/* Profile details: quiet context, so it grounds on stone and casts
+              no shadow (shadow + white are reserved for actions/active state). */}
+          <div className="bg-editorial-stone border border-editorial-line-light rounded-2xl p-4 flex flex-col gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-editorial-sage/10 flex items-center justify-center text-editorial-sage shrink-0">
+              <div className="w-9 h-9 rounded-full bg-editorial-sage/15 flex items-center justify-center text-editorial-sage shrink-0">
                 <User size={16} />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-semibold text-editorial-charcoal truncate">{profile.name}</h3>
-                <p className="text-xs text-editorial-charcoal/50">{profile.grade} · {profile.language}</p>
+                <p className="text-xs text-editorial-charcoal/60">{profile.grade} · {profile.language}</p>
               </div>
             </div>
             <p className="text-xs text-editorial-charcoal/70 font-serif italic border-t border-editorial-line-light pt-2.5">
@@ -982,7 +1013,7 @@ export default function App() {
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
                 <MessageSquare size={14} className="text-editorial-sage" />
-                <h3 className="text-sm font-semibold text-editorial-charcoal">My Study Log</h3>
+                <h3 className="text-sm font-semibold text-editorial-sage">My Study Log</h3>
               </div>
               <button
                 onClick={handleNewChat}
@@ -995,24 +1026,25 @@ export default function App() {
 
             <div className="flex flex-col gap-1.5">
               {conversations.length === 0 && (
-                <p className="text-xs text-editorial-charcoal/40 px-1 py-2">No chats yet. Start one above.</p>
+                <p className="text-xs text-editorial-charcoal/70 px-1 py-2">No chats yet. Start one above.</p>
               )}
               {conversations.map((c) => (
                 <div
                   key={c.id}
                   onClick={() => openConversation(c.id)}
-                  className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer border transition-all ${
+                  className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
                     activeId === c.id
-                      ? "bg-editorial-sage/10 border-editorial-sage/30"
-                      : "bg-white border-editorial-line-light hover:border-editorial-sage/30"
+                      ? "bg-editorial-sage/10 border-l-2 border-editorial-sage shadow-[0_1px_2px_rgba(26,26,26,0.05)]"
+                      : "bg-transparent border-l-2 border-transparent hover:bg-editorial-stone"
                   }`}
                 >
-                  <MessageSquare size={13} className={activeId === c.id ? "text-editorial-sage shrink-0" : "text-editorial-charcoal/40 shrink-0"} />
-                  <span className="flex-1 text-xs text-editorial-charcoal truncate">{c.title || "New chat"}</span>
+                  <MessageSquare size={13} className={activeId === c.id ? "text-editorial-sage shrink-0" : "text-editorial-charcoal/50 shrink-0"} />
+                  <span className={`flex-1 text-xs truncate ${activeId === c.id ? "font-medium text-editorial-charcoal" : "text-editorial-charcoal/85"}`}>{c.title || "New chat"}</span>
                   <button
                     onClick={(e) => handleDeleteConversation(c.id, e)}
                     title="Delete chat"
-                    className="opacity-0 group-hover:opacity-100 text-editorial-charcoal/40 hover:text-red-700 transition-all shrink-0"
+                    aria-label="Delete chat"
+                    className="opacity-40 lg:opacity-0 lg:group-hover:opacity-100 text-editorial-charcoal/50 hover:text-red-700 transition-all shrink-0"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -1025,13 +1057,13 @@ export default function App() {
           <div className="flex flex-col gap-2 border-t border-editorial-line pt-3 mt-auto">
             <button
               onClick={() => setShowChapters((v) => !v)}
-              className="flex items-center justify-between px-1 cursor-pointer text-editorial-charcoal"
+              className="flex items-center justify-between px-1 cursor-pointer text-editorial-sage"
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
                 {showChapters ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 Chapter mastery
               </span>
-              <span className="text-[10px] text-editorial-charcoal/40">{chapters.length}</span>
+              <span className="text-[10px] text-editorial-charcoal/60">{chapters.length}</span>
             </button>
 
             {showChapters && (
@@ -1065,7 +1097,7 @@ export default function App() {
                     <div
                       key={ch.id}
                       onClick={() => handleSendMessage(`Teach me "${ch.name}" in depth.`, { deep: true })}
-                      className="group bg-white border border-editorial-line-light p-3 rounded-xl flex flex-col gap-2 hover:border-editorial-sage/40 transition-all cursor-pointer relative"
+                      className="group bg-editorial-stone border border-editorial-line-light p-3 rounded-xl flex flex-col gap-2 hover:border-editorial-sage/40 hover:bg-editorial-sage/[0.05] transition-all cursor-pointer relative"
                     >
                       <div className="flex justify-between items-start gap-1">
                         <h4 className="text-xs font-medium text-editorial-charcoal leading-tight pr-4">{ch.name}</h4>
@@ -1088,7 +1120,7 @@ export default function App() {
                                   : m === "developing"
                                   ? "bg-yellow-50 text-yellow-800 border border-yellow-200"
                                   : "bg-emerald-50/70 text-emerald-800 border border-emerald-200"
-                                : "text-editorial-charcoal/40 hover:bg-editorial-stone"
+                                : "text-editorial-charcoal/60 hover:bg-editorial-stone"
                             }`}
                           >
                             {m === "developing" ? "Dev" : m}
@@ -1101,15 +1133,20 @@ export default function App() {
               </>
             )}
           </div>
-        </aside>
+        </motion.aside>
 
         {/* RIGHT: Chat panel */}
-        <main className={`${mobileView === "chat" ? "flex" : "hidden"} lg:flex flex-1 min-h-0 flex-col bg-white/40 p-3 md:p-6 overflow-hidden`}>
+        <motion.main
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.06, ease: [0.22, 0.61, 0.36, 1] }}
+          className={`${mobileView === "chat" ? "flex" : "hidden"} lg:flex flex-1 min-h-0 flex-col bg-white/40 p-3 md:p-6 overflow-hidden`}
+        >
 
           {/* Live status strip */}
           {isLiveActive && (
             <div className="mb-3 flex items-center gap-3 px-4 py-2 rounded-xl bg-editorial-stone/80 border border-editorial-sage/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-editorial-sage motion-safe:animate-pulse shrink-0" />
               <span className="text-xs text-editorial-charcoal/70 flex-1 truncate">{liveStatus}</span>
               <div className="flex items-center gap-0.5">
                 {[3, 6, 9, 6, 3].map((val, idx) => (
@@ -1125,43 +1162,64 @@ export default function App() {
           )}
 
           {/* Messages */}
-          <div ref={messagesRef} className="flex-1 bg-[#FAF9F6]/40 border border-editorial-line-light rounded-2xl p-3 md:p-5 overflow-y-auto flex flex-col gap-5 min-h-[280px]">
+          <div ref={messagesRef} className="flex-1 bg-editorial-ivory border border-editorial-line-light rounded-2xl p-3 md:p-5 overflow-y-auto flex flex-col gap-5 min-h-[280px]">
             {chatHistory.length === 0 && !isGenerating && (
-              <div className="m-auto text-center max-w-md flex flex-col items-center gap-4 py-8">
-                <div className="w-12 h-12 rounded-full bg-editorial-sage/10 flex items-center justify-center text-editorial-sage">
-                  <Sparkles size={22} />
+              <div className="m-auto w-full max-w-lg rounded-3xl border border-editorial-line bg-editorial-stone/30 px-6 py-8 md:px-9 md:py-10 text-center flex flex-col items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-editorial-sage shrink-0">
+                  <span className="font-serif text-2xl italic leading-none text-editorial-ivory">C</span>
                 </div>
                 <div>
-                  <h2 className="font-serif italic text-lg text-editorial-charcoal mb-1">What would you like to learn today?</h2>
-                  <p className="text-sm text-editorial-charcoal/55">Ask anything, or upload a photo of a question you're stuck on.</p>
+                  <h2 className="font-serif italic text-2xl md:text-[26px] leading-snug text-editorial-charcoal">
+                    What are we working through today{profile.name ? `, ${profile.name.split(" ")[0]}` : ""}?
+                  </h2>
+                  <p className="mt-2.5 text-sm leading-relaxed text-editorial-sage">
+                    Ask it once, ask it ten times. I will explain it a fresh way each time, until it lands.
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full mt-1">
-                  {SUGGESTED_QUERIES.map((q, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => selectSuggestedPrompt(q.prompt)}
-                      className="text-left px-4 py-2.5 rounded-xl border border-editorial-line bg-white text-xs hover:border-editorial-sage/40 hover:bg-editorial-sage/5 transition-all text-editorial-charcoal/80 cursor-pointer"
-                    >
-                      {q.label}
-                    </button>
-                  ))}
+                <div className="w-full mt-2">
+                  <p className="mb-2 text-left font-serif italic text-sm text-editorial-charcoal/70">Not sure where to start?</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {SUGGESTED_QUERIES.map((q, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => selectSuggestedPrompt(q.prompt)}
+                        className="group flex items-start gap-3 text-left px-4 py-3 rounded-2xl border border-editorial-line bg-white hover:border-editorial-sage/50 hover:bg-editorial-sage/[0.06] motion-safe:hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+                      >
+                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-editorial-sage/10 text-editorial-sage">
+                          <BookOpen size={15} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-editorial-charcoal">{q.label}</span>
+                          <span className="mt-0.5 block text-[11px] leading-relaxed text-editorial-charcoal/60">{q.hint}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
 
             {chatHistory.map((message, msgIdx) => (
-              <div key={message.id} className={`flex flex-col max-w-[92%] md:max-w-[85%] ${message.role === "user" ? "self-end items-end" : "self-start items-start"}`}>
-                <div className="flex items-center gap-2 mb-1 text-[10px] text-editorial-charcoal/40">
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: [0.22, 0.61, 0.36, 1] }}
+                className={`flex flex-col max-w-[92%] md:max-w-[85%] ${message.role === "user" ? "self-end items-end" : "self-start items-start"}`}
+              >
+                <div className="flex items-center gap-2 mb-1 text-[10px] text-editorial-charcoal/70">
                   <span>{message.role === "user" ? "You" : "Clarify.AI"}</span>
                   <span>·</span>
                   <span>{message.timestamp}</span>
                 </div>
 
                 <div
-                  className={`p-4 md:p-5 relative shadow-sm border ${
+                  className={`p-4 md:p-5 relative border ${
                     message.role === "user"
-                      ? "bg-editorial-stone border-editorial-line rounded-2xl rounded-tr-sm text-editorial-charcoal text-sm md:text-base"
-                      : "bg-white border-editorial-line-light rounded-2xl rounded-tl-sm text-editorial-charcoal text-sm md:text-base leading-relaxed"
+                      ? "bg-editorial-stone/70 border-editorial-line-light rounded-2xl rounded-tr-sm text-editorial-charcoal text-sm md:text-base"
+                      : message.isError
+                      ? "bg-editorial-stone/60 border-editorial-line-light rounded-2xl rounded-tl-sm text-editorial-charcoal/85 text-sm md:text-base leading-relaxed"
+                      : "bg-editorial-ivory border-editorial-line border-l-[3px] border-l-editorial-sage/40 rounded-2xl rounded-tl-sm text-editorial-charcoal text-sm md:text-base leading-relaxed shadow-[0_1px_2px_rgba(26,26,26,0.05)]"
                   }`}
                   id={`msg-bubble-${message.id}`}
                 >
@@ -1195,15 +1253,21 @@ export default function App() {
                       renderMessageContent(message)
                     ))}
 
-                  {/* Deep-check state: honest at every stage. */}
+                  {/* Deep-check state: honest at every stage. The passed state
+                      earns a quiet sage seal; checking and unavailable stay
+                      plain (a seal on an unverified answer would be dishonest). */}
                   {message.role === "model" && message.verification && (
                     <div
                       className={`mt-3 flex items-center gap-1.5 text-[11px] ${
-                        message.verification === "unavailable" ? "text-amber-800" : "text-editorial-sage"
+                        message.verification === "passed"
+                          ? "inline-flex rounded-full bg-editorial-sage/10 px-2.5 py-1 font-medium text-editorial-sage"
+                          : message.verification === "unavailable"
+                          ? "text-amber-800"
+                          : "text-editorial-sage"
                       }`}
                     >
                       {message.verification === "checking" ? (
-                        <Loader2 size={12} className="animate-spin" />
+                        <Loader2 size={12} className="motion-safe:animate-spin" />
                       ) : message.verification === "passed" ? (
                         <CheckCircle2 size={12} />
                       ) : (
@@ -1220,7 +1284,7 @@ export default function App() {
                   {/* Sources */}
                   {message.sources && message.sources.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-editorial-line-light flex flex-wrap gap-2 items-center">
-                      <span className="text-[10px] text-editorial-charcoal/50 flex items-center gap-1">
+                      <span className="text-[10px] text-editorial-charcoal/70 flex items-center gap-1">
                         <Search size={10} className="text-editorial-sage" /> Sources:
                       </span>
                       {message.sources.map((src, sIdx) => (
@@ -1243,7 +1307,7 @@ export default function App() {
                         <button
                           onClick={() => handleSendMessage(STILL_CONFUSED_PROMPT)}
                           disabled={isGenerating}
-                          className={ACTION_PILL}
+                          className={STILL_FUZZY_PILL}
                           id={`btn-reexplain-${message.id}`}
                           title="Explain it again, a different way, as many times as you need"
                         >
@@ -1296,7 +1360,7 @@ export default function App() {
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))}
 
             {/* Facts fill the wait until the first streamed token arrives. */}
@@ -1350,7 +1414,7 @@ export default function App() {
                   onMouseDown={(e) => e.preventDefault() /* keep the selection alive */}
                   onClick={() => saveSelectionToNotebook()}
                   disabled={savingSelection}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-editorial-sage px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-editorial-sage px-4 py-2 text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-60 cursor-pointer motion-safe:active:scale-[0.97]"
                   id="btn-save-selection"
                 >
                   <BookMarked size={13} /> {savingSelection ? "Saving…" : "Save lines"}
@@ -1372,7 +1436,7 @@ export default function App() {
               onClick={() => fileInputRef.current?.click()}
               disabled={isGenerating || attachments.length >= MAX_ATTACHMENTS}
               title="Upload an image or file"
-              className="w-10 h-10 flex items-center justify-center rounded-full text-editorial-charcoal/50 hover:bg-editorial-stone hover:text-editorial-sage transition-colors shrink-0 disabled:opacity-30 cursor-pointer"
+              className="w-11 h-11 flex items-center justify-center rounded-full text-editorial-charcoal/50 hover:bg-editorial-stone hover:text-editorial-sage transition-colors shrink-0 disabled:opacity-30 cursor-pointer motion-safe:active:scale-[0.96]"
               id="btn-upload"
             >
               <Paperclip size={18} />
@@ -1392,9 +1456,9 @@ export default function App() {
               onClick={isLiveActive ? stopLiveSession : startLiveSession}
               title={isLiveActive ? "Stop the voice session" : "Talk to Clarify.AI with your voice"}
               aria-label={isLiveActive ? "Stop the voice session" : "Talk to Clarify.AI with your voice"}
-              className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors shrink-0 cursor-pointer ${
+              className={`w-11 h-11 flex items-center justify-center rounded-full transition-colors shrink-0 cursor-pointer motion-safe:active:scale-[0.96] ${
                 isLiveActive
-                  ? "bg-red-800 text-white hover:bg-red-700"
+                  ? "bg-editorial-sage text-white hover:bg-editorial-sage/90"
                   : "text-editorial-charcoal/50 hover:bg-editorial-stone hover:text-editorial-sage"
               }`}
               id="btn-voice"
@@ -1403,18 +1467,22 @@ export default function App() {
             </button>
             <button
               onClick={() => handleSendMessage()}
-              className="w-10 h-10 bg-editorial-sage hover:bg-editorial-sage/90 text-white rounded-full flex items-center justify-center transition-colors shrink-0 disabled:bg-editorial-stone disabled:text-editorial-charcoal/30 cursor-pointer"
+              className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 cursor-pointer motion-safe:transition-all motion-safe:active:scale-[0.96] ${
+                isGenerating
+                  ? "bg-editorial-sage/70 text-white"
+                  : "bg-editorial-sage hover:bg-editorial-sage/90 text-white disabled:bg-transparent disabled:text-editorial-sage/40 disabled:border disabled:border-editorial-sage/25"
+              }`}
               disabled={isGenerating || (!inputText.trim() && attachments.length === 0)}
               id="btn-send-chat"
             >
-              <Send size={16} />
+              {isGenerating ? <Loader2 size={16} className="motion-safe:animate-spin" /> : <Send size={16} />}
             </button>
           </div>
-        </main>
+        </motion.main>
       </div>
 
       {/* Mobile bottom nav: 2 view tabs + the Pre-exam notebook overlay */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-editorial-line bg-editorial-ivory/95 backdrop-blur-sm">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-editorial-line bg-editorial-ivory/95 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]">
         {([
           { k: "study", label: "Study Log", icon: <MessageSquare size={18} /> },
           { k: "chat", label: "Chat", icon: <Sparkles size={18} /> }
@@ -1422,8 +1490,10 @@ export default function App() {
           <button
             key={t.k}
             onClick={() => setMobileView(t.k)}
-            className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${
-              mobileView === t.k ? "text-editorial-sage" : "text-editorial-charcoal/40 hover:text-editorial-charcoal"
+            className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium border-t-2 transition-colors ${
+              mobileView === t.k
+                ? "text-editorial-sage border-editorial-sage bg-editorial-sage/8"
+                : "text-editorial-charcoal/70 border-transparent hover:text-editorial-charcoal"
             }`}
           >
             {t.icon}
@@ -1432,7 +1502,7 @@ export default function App() {
         ))}
         <button
           onClick={() => setNotebookOpen(true)}
-          className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-editorial-charcoal/40 hover:text-editorial-charcoal transition-colors"
+          className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium border-t-2 border-transparent text-editorial-charcoal/70 hover:text-editorial-charcoal transition-colors"
           id="tab-notebook"
         >
           <BookMarked size={18} />
@@ -1453,15 +1523,21 @@ export default function App() {
       />
 
       {/* Quiet toast (saves, hints) */}
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed left-1/2 top-4 z-[70] max-w-[92vw] -translate-x-1/2 rounded-full bg-editorial-charcoal px-5 py-2.5 text-center text-xs text-white shadow-lg"
-        >
-          {toast}
-        </div>
-      )}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            role="status"
+            aria-live="polite"
+            initial={{ opacity: 0, y: -8, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: -8, x: "-50%" }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="fixed left-1/2 top-4 z-[70] max-w-[92vw] rounded-full bg-editorial-charcoal px-5 py-2.5 text-center text-xs text-white shadow-lg"
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Plan chooser / paywall */}
       {account && (
@@ -1569,7 +1645,7 @@ export default function App() {
                   <button type="submit" className="px-5 py-2.5 bg-editorial-charcoal hover:bg-editorial-charcoal/90 text-white rounded-full text-sm transition-colors cursor-pointer">Save changes</button>
                 </div>
 
-                <p className="border-t border-editorial-line-light pt-3 text-center text-[11px] text-editorial-charcoal/50">
+                <p className="border-t border-editorial-line-light pt-3 text-center text-[11px] text-editorial-charcoal/70">
                   Need help with anything, including payments? Write to{" "}
                   <a href={`mailto:${SUPPORT_EMAIL}`} className="text-editorial-sage underline underline-offset-2 hover:text-editorial-charcoal">
                     {SUPPORT_EMAIL}
@@ -1582,6 +1658,7 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+    </MotionConfig>
   );
 }
 
@@ -1641,18 +1718,14 @@ function SmartFactsLoader({ seedMessage }: { seedMessage: string }) {
   const fact = STUDY_FACTS[idx] || FALLBACK_STUDY_FACT;
   return (
     <div className="self-start max-w-[92%] md:max-w-[85%] flex flex-col items-start">
-      <div className="flex items-center gap-2 mb-1.5 text-[10px] text-editorial-charcoal/40">
-        <span className="flex gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-editorial-sage/40 animate-bounce" style={{ animationDelay: "0s" }} />
-          <span className="w-1.5 h-1.5 rounded-full bg-editorial-sage/70 animate-bounce" style={{ animationDelay: "0.2s" }} />
-          <span className="w-1.5 h-1.5 rounded-full bg-editorial-sage animate-bounce" style={{ animationDelay: "0.4s" }} />
-        </span>
-        Clarify.AI is thinking…
+      <div className="flex items-center gap-2 mb-1.5 text-[11px] text-editorial-sage">
+        <span className="flex h-1.5 w-1.5 rounded-full bg-editorial-sage motion-safe:animate-pulse shrink-0" />
+        Working it out carefully, and checking it before I show you.
       </div>
-      <div className="p-4 rounded-2xl bg-white border border-editorial-line-light rounded-tl-sm shadow-sm max-w-md">
+      <div className="p-4 rounded-2xl bg-editorial-stone/40 border border-editorial-line-light rounded-tl-sm max-w-md">
         <div className="flex items-center gap-1.5 mb-2 text-editorial-sage">
           <Sparkles size={12} />
-          <span className="text-[10px] font-bold uppercase tracking-[0.15em]">Did you know?</span>
+          <span className="font-serif italic text-xs">Did you know?</span>
         </div>
         <AnimatePresence mode="wait">
           <motion.p

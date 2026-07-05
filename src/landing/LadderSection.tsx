@@ -1,15 +1,14 @@
 /**
- * Act three: the promise that makes Clarify.AI different. One tap says
- * "still fuzzy" and the teacher climbs down the re-explain ladder, never
- * repeating itself, never moving on, never implying the student is slow.
- * Closes with the REAL re-explanation captured from the live product.
+ * Act three: it stays until it lands. Proof before pitch: the REAL
+ * re-explanation captured from the live product comes first, as a second,
+ * smaller sheet of lit paper. Only after the visitor has watched it work do
+ * the five rungs name the shape of what they just saw, as a chalk ledger.
  */
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import { Sparkles } from "lucide-react";
 import { Markdown } from "../Markdown";
 import { REAL_REEXPLANATION, REAL_STILL_FUZZY_PROMPT } from "./realAnswer";
-import { useStaticStart } from "./useStaticStart";
-import ScatterWords from "./ScatterWords";
+import { useCalm, fadeUp, sheetRise, drawX } from "./reveals";
 
 const RUNGS = [
   {
@@ -35,23 +34,20 @@ const RUNGS = [
 ];
 
 export default function LadderSection() {
-  const prefersReduced = useReducedMotion();
-  const staticStart = useStaticStart();
-  const reduce = prefersReduced || staticStart;
+  const calm = useCalm();
 
   return (
-    <section id="how" className="relative overflow-hidden bg-editorial-ivory px-4 py-20 md:px-8 md:py-28" aria-label="How Clarify.AI stays until it lands">
-      <ScatterWords tone="light" />
+    <section id="how" className="landing-cv landing-cv-ladder relative bg-night px-4 py-20 md:px-8 md:py-28" aria-label="How Clarify.AI stays until it lands">
       <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-20">
-          {/* The pitch + the button */}
+        <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
+          {/* The pitch, hanging in the dark while the proof glows beside it */}
           <div className="lg:sticky lg:top-16">
-            <h2 className="landing-balance font-serif text-[clamp(2.1rem,5vw,3.25rem)] italic leading-tight tracking-[-0.01em] text-editorial-charcoal">
+            <h2 className="landing-balance font-serif text-[clamp(2.1rem,5vw,3.25rem)] italic leading-tight tracking-[-0.01em] text-chalk">
               It stays until it lands.
             </h2>
-            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-editorial-charcoal/70 md:text-base">
-              Understanding rarely arrives on the first try, and Clarify.AI is built
-              around that truth. Under every answer sits one small button:
+            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-chalk-dim md:text-base">
+              Understanding rarely arrives on the first try, and Clarify.AI is
+              built around that truth. Under every answer sits one small button:
             </p>
             <span
               aria-hidden="true"
@@ -59,73 +55,69 @@ export default function LadderSection() {
             >
               <Sparkles size={14} /> Still fuzzy?
             </span>
-            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-editorial-charcoal/70 md:text-base">
-              One tap. You never have to put your confusion into words. The teacher
-              never repeats itself, never sighs, and never moves on while you are
-              lost. It simply climbs down another rung:
+            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-chalk-dim md:text-base">
+              One tap. You never have to put your confusion into words. While
+              building this page we tapped it on the Newton answer above. The
+              live teacher slowed down, dropped the formula, and changed the
+              analogy entirely. Unedited:
             </p>
           </div>
 
-          {/* The ladder. A real, ordered sequence, so the numbers are earned. */}
-          <ol className="flex flex-col gap-2.5">
-            {RUNGS.map((rung, i) => (
-              <motion.li
-                key={rung.title}
-                {...(reduce
-                  ? {}
-                  : {
-                      initial: { opacity: 0, y: 16 },
-                      whileInView: { opacity: 1, y: 0 },
-                      viewport: { once: true, margin: "-10% 0px" },
-                      transition: { duration: 0.55, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] as const },
-                    })}
-                className="rounded-2xl border border-editorial-line-light bg-white p-5 md:p-6"
-                style={{ marginLeft: `calc(${i} * min(2.2rem, 3vw))` }}
+          {/* The proof: the real re-explanation, a smaller lit sheet */}
+          <div className="flex flex-col gap-4">
+            <motion.div {...sheetRise(calm)} className="flex flex-col items-end">
+              <div className="mb-1 text-[10px] text-chalk-dim">You, with one tap</div>
+              <div className="lit-sheet max-w-[92%] rounded-2xl rounded-tr-sm border border-editorial-line bg-editorial-stone p-4 text-sm text-editorial-charcoal md:max-w-[80%]">
+                {REAL_STILL_FUZZY_PROMPT}
+              </div>
+            </motion.div>
+            <motion.div {...sheetRise(calm)} className="flex flex-col items-start">
+              <div className="mb-1 text-[10px] text-chalk-dim">Clarify.AI &middot; unedited</div>
+              <div
+                tabIndex={0}
+                role="region"
+                aria-label="The real re-explanation from Clarify.AI, scrollable"
+                className="lit-sheet max-h-[460px] w-full min-w-0 overflow-y-auto rounded-2xl rounded-tl-sm bg-editorial-ivory p-4 text-sm leading-relaxed text-editorial-charcoal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-bright md:p-5"
               >
-                <div className="flex items-baseline gap-4">
-                  <span className="font-serif text-2xl italic leading-none text-editorial-sage">{i + 1}</span>
-                  <div>
-                    <h3 className="text-[15px] font-semibold text-editorial-charcoal md:text-base">{rung.title}</h3>
-                    <p className="landing-pretty mt-1.5 text-sm leading-relaxed text-editorial-charcoal/70">{rung.body}</p>
-                  </div>
-                </div>
-              </motion.li>
-            ))}
-          </ol>
+                <Markdown>{REAL_REEXPLANATION}</Markdown>
+              </div>
+            </motion.div>
+            <p className="landing-pretty font-serif text-base italic leading-relaxed text-chalk-dim">
+              The real reply ends with a question: &ldquo;Want to try the cricket
+              ball question now...&rdquo; It will wait for your answer. It always waits.
+            </p>
+          </div>
         </div>
 
-        {/* Proof: the real re-explanation from the live session */}
-        <div className="mt-16 md:mt-24">
-          <div className="mx-auto max-w-3xl">
-            <h3 className="text-center font-serif text-2xl italic text-editorial-charcoal md:text-3xl">
-              And this part is real, too.
-            </h3>
-            <p className="landing-pretty mx-auto mt-3 max-w-xl text-center text-[15px] leading-relaxed text-editorial-charcoal/70">
-              While building this page we tapped that button on the Newton answer
-              above. Here is what the live teacher did: it slowed down, dropped the
-              formula, and changed the analogy entirely.
-            </p>
+        {/* The shape of what you just watched: five rungs, chalk on night */}
+        <div className="mt-20 md:mt-28">
+          <motion.p {...fadeUp(calm)} className="landing-balance max-w-2xl font-serif text-xl italic leading-snug text-chalk md:text-2xl">
+            What you just watched has a shape. The teacher climbs down five rungs,
+            as many as you need, and it never repeats itself, never sighs, never
+            moves on while you are lost.
+          </motion.p>
 
-            <div className="mt-8 flex flex-col gap-4">
-              <div className="flex max-w-[92%] flex-col items-end self-end md:max-w-[75%]">
-                <div className="mb-1 text-[10px] text-editorial-charcoal/70">You, with one tap</div>
-                <div className="rounded-2xl rounded-tr-sm border border-editorial-line bg-editorial-stone p-4 text-sm text-editorial-charcoal shadow-sm">
-                  {REAL_STILL_FUZZY_PROMPT}
-                </div>
-              </div>
-              <div className="flex max-w-full flex-col items-start self-start">
-                <div className="mb-1 text-[10px] text-editorial-charcoal/70">Clarify.AI &middot; unedited</div>
-                <div
-                  tabIndex={0}
-                  role="region"
-                  aria-label="The real re-explanation from Clarify.AI, scrollable"
-                  className="max-h-[430px] w-full min-w-0 overflow-y-auto rounded-2xl rounded-tl-sm border border-editorial-line-light bg-white p-4 text-sm leading-relaxed text-editorial-charcoal shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-editorial-sage md:p-5"
-                >
-                  <Markdown>{REAL_REEXPLANATION}</Markdown>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ol className="mt-10 flex flex-col">
+            {RUNGS.map((rung, i) => (
+              <li key={rung.title} style={{ marginLeft: `calc(${i} * min(1.8rem, 2.5vw))` }}>
+                <motion.div
+                  {...drawX(calm)}
+                  className="h-px origin-left bg-night-line"
+                />
+                <motion.div {...fadeUp(calm, calm ? 0 : i * 0.06)} className="flex items-baseline gap-5 py-5 md:gap-7 md:py-6">
+                  <span className="font-serif text-[clamp(2.2rem,4vw,3.2rem)] italic leading-none text-chalk/45">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <h3 className="font-serif text-lg italic text-chalk md:text-xl">{rung.title}</h3>
+                    <p className="landing-pretty mt-1.5 max-w-xl text-sm leading-relaxed text-chalk-dim md:text-[15px]">
+                      {rung.body}
+                    </p>
+                  </div>
+                </motion.div>
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
     </section>

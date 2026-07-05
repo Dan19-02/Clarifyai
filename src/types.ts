@@ -31,6 +31,9 @@ export interface ChatMessage {
   /** True while this bubble is receiving a live streamed draft (client only:
    *  rendered as plain markdown, action buttons hidden until complete). */
   streaming?: boolean;
+  /** A gentle, self-blaming failure notice (client only): rendered on a faint
+   *  stone ground, distinct from a real white answer, with no warning color. */
+  isError?: boolean;
 }
 
 /** A separate chat window / study session. */

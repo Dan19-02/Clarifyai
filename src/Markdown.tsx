@@ -153,7 +153,7 @@ function DiagramPending() {
 
 function MarkdownImpl({ children, streaming }: MarkdownProps) {
   return (
-    <div className="clarify-prose space-y-3 text-sm leading-relaxed text-editorial-charcoal break-words md:text-[15px]">
+    <div className="clarify-prose space-y-3 text-sm leading-[1.7] text-editorial-charcoal break-words md:text-[15px]">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
@@ -203,13 +203,13 @@ function MarkdownImpl({ children, streaming }: MarkdownProps) {
               {children}
             </a>
           ),
-          h1: ({ children }) => <h1 className="font-serif text-lg font-bold">{children}</h1>,
-          h2: ({ children }) => <h2 className="font-serif text-base font-bold">{children}</h2>,
-          h3: ({ children }) => <h3 className="font-serif text-sm font-bold">{children}</h3>,
+          h1: ({ children }) => <h1 className="font-serif text-xl font-bold mt-1">{children}</h1>,
+          h2: ({ children }) => <h2 className="font-serif text-lg font-semibold mt-3">{children}</h2>,
+          h3: ({ children }) => <h3 className="font-serif text-base font-semibold text-editorial-sage mt-2">{children}</h3>,
           ul: ({ children }) => <ul className="ml-4 list-disc space-y-1">{children}</ul>,
           ol: ({ children }) => <ol className="ml-4 list-decimal space-y-1">{children}</ol>,
           blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-editorial-sage/50 bg-editorial-stone/30 py-1 pl-3 italic">
+            <blockquote className="border-l-[3px] border-editorial-sage/60 bg-editorial-stone/30 py-1 pl-3 italic">
               {children}
             </blockquote>
           ),

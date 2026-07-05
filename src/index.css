@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500;600&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Lora", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  
+
   --color-editorial-ivory: #FAF9F6;
   --color-editorial-charcoal: #1A1A1A;
   --color-editorial-sage: #5A5A40;
@@ -17,6 +17,7 @@
      Warm olive-cast darks so the night and the ivory day share one family. */
   --color-night: #15150e;
   --color-night-soft: #202016;
+  --color-night-deep: #100f0a;
   --color-night-line: rgba(240, 238, 226, 0.14);
   --color-chalk: #f0eee2;
   --color-chalk-dim: rgba(240, 238, 226, 0.62);
@@ -30,6 +31,30 @@
 /* Long display equations scroll instead of stretching their bubble. */
 .clarify-prose .katex-display { overflow-x: auto; overflow-y: hidden; }
 
+/* Devanagari lines on the landing get a bookish serif that matches Lora's
+   voice where the system fallback breaks it. Google Fonts serves the family
+   with unicode-range, so the file only downloads when Hindi glyphs paint. */
+.landing-devanagari { font-family: "Tiro Devanagari Hindi", "Lora", Georgia, serif; }
+
+/* Pools of lamplight. Pre-composited radial gradients painted once; any
+   later animation on them is transform and opacity only, so a low-end phone
+   never re-rasterizes a blur. */
+.lamp-pool {
+  background: radial-gradient(
+    closest-side,
+    rgba(240, 238, 226, 0.13),
+    rgba(240, 238, 226, 0.05) 55%,
+    transparent 78%
+  );
+}
+
+/* Paper held up in the dark: the warm bloom around the lit ivory sheets. */
+.lit-sheet {
+  box-shadow:
+    0 0 90px 12px rgba(240, 238, 226, 0.08),
+    0 0 28px 2px rgba(240, 238, 226, 0.06);
+}
+
 /* The half-caught words drifting across the night classroom. Pure CSS so the
    hero stays cheap on low-end phones. Each span sets its own --dx/--dy/--dur. */
 @keyframes landing-drift {
@@ -41,11 +66,38 @@
   animation: landing-drift var(--dur, 18s) ease-in-out var(--delay, 0s) infinite;
 }
 
+/* The page's one deliberate loop: the Still fuzzy chip, breathing. */
+@keyframes landing-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.landing-breathe { animation: landing-breathe 4s ease-in-out infinite; }
+
+/* The loading gate's monogram: a slow, patient breath. Driven by CSS (not a
+   motion/react loop) so a motion-safe: variant fully halts it for reduced
+   motion, including the opacity, which MotionConfig would keep pulsing. */
+@keyframes clarify-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.85; }
+}
+
+/* Acts far below the fold skip layout and paint until the visitor nears.
+   Each section reserves a placeholder close to its real rendered height, so
+   the first reveal does not pop the scrollbar/scroll position. */
+.landing-cv { content-visibility: auto; }
+.landing-cv-ladder { contain-intrinsic-size: auto 1850px; }
+.landing-cv-register { contain-intrinsic-size: auto 950px; }
+.landing-cv-cards { contain-intrinsic-size: auto 1100px; }
+.landing-cv-pricing { contain-intrinsic-size: auto 1150px; }
+.landing-cv-finale { contain-intrinsic-size: auto 1300px; }
+
+/* Dotted leaders for the finale's index page. */
+.landing-leader { border-bottom: 2px dotted rgba(240, 238, 226, 0.26); }
+
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-drift { animation: none !important; }
+  .landing-drift, .landing-breathe { animation: none !important; }
 }
-

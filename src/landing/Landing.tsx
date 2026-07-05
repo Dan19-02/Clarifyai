@@ -1,24 +1,26 @@
 /**
- * The public landing site: the story a signed-out visitor walks through.
+ * The public landing site: one night, lived in real time.
  *
- * One long scroll that performs the product's promise. It opens in the dark
- * of a classroom where a phrase flies past, turns to the app's ivory as the
- * catch-net appears, shows the REAL product answering that exact phrase
- * (captured live, unedited), climbs the re-explain ladder, states the honesty
- * machinery, and closes back in the night, calm now.
+ * The page opens at 11:04 pm and never leaves the dark. Ivory appears only
+ * as bounded sheets of lit paper: the real question, the REAL answer
+ * (captured live, unedited, rendered by the product's own components), the
+ * real re-explanation, three language index cards, and the pricing page.
+ * Night constant, light intermittent: every arrival of light is the product
+ * arriving. The finale ticks the night's index and dims the lamp to a
+ * bedside dot, because the promise of a catch-net is permission to sleep.
  *
- * All product content on this page is genuine output rendered through the
- * product's own components. No mockups, no fabricated data, no fake proof.
+ * All product content on this page is genuine output. No mockups, no
+ * fabricated data, no fake proof.
  */
 import { useEffect, useRef, useState } from "react";
 import Login from "../Login";
-import NightAct from "./NightAct";
-import DemoSection from "./DemoSection";
+import HourAct from "./HourAct";
+import AnswerAct from "./AnswerAct";
 import LadderSection from "./LadderSection";
-import TruthSection from "./TruthSection";
-import EveryStudentSection from "./EveryStudentSection";
-import PricingSection from "./PricingSection";
-import FinaleSection, { LandingFooter } from "./FinaleSection";
+import RegisterSection from "./RegisterSection";
+import IndexCards from "./IndexCards";
+import PricingSheet from "./PricingSheet";
+import LampOff, { LandingFooter } from "./LampOff";
 
 export type AuthMode = "login" | "signup";
 
@@ -43,15 +45,15 @@ export default function Landing() {
   }
 
   return (
-    <div className="bg-editorial-ivory font-sans text-editorial-charcoal antialiased">
+    <div className="bg-night font-sans text-chalk antialiased">
       <main>
-        <NightAct onAuth={setAuth} />
-        <DemoSection />
+        <HourAct onAuth={setAuth} />
+        <AnswerAct />
         <LadderSection />
-        <TruthSection />
-        <EveryStudentSection />
-        <PricingSection onAuth={setAuth} />
-        <FinaleSection onAuth={setAuth} />
+        <RegisterSection />
+        <IndexCards />
+        <PricingSheet onAuth={setAuth} />
+        <LampOff onAuth={setAuth} />
       </main>
       <LandingFooter onAuth={setAuth} />
     </div>
