@@ -26,6 +26,7 @@ import {
   BookMarked
 } from "lucide-react";
 import { motion, AnimatePresence, MotionConfig } from "motion/react";
+import { ThemeToggle } from "./ThemeToggle";
 import {
   ChatMessage,
   ChapterProgress,
@@ -113,6 +114,19 @@ export default function App() {
 
   // Pre-exam notebook overlay + line-selection save state + toast.
   const [notebookOpen, setNotebookOpen] = useState(false);
+
+  // Escape closes whichever overlay is on top: a kid who taps into a modal
+  // must always have the universal way back out.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setNotebookOpen((open) => (open ? false : open));
+      setShowUpgrade((open) => (open ? false : open));
+      setIsEditingProfile((open) => (open ? false : open));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [selSave, setSelSave] = useState<{ msgId: string; text: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,6 +151,8 @@ export default function App() {
   const [inputText, setInputText] = useState("");
   const [attachments, setAttachments] = useState<{ dataUrl: string; mimeType: string; name: string; isImage: boolean }[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  // Synchronous companion to isGenerating (see handleSendMessage).
+  const sendingRef = useRef(false);
   const [mobileView, setMobileView] = useState<MobileView>("chat");
   const [showChapters, setShowChapters] = useState(false);
 
@@ -335,7 +351,22 @@ export default function App() {
     }
   };
 
+  const creatingChatRef = useRef(false);
   const handleNewChat = async () => {
+    // A button-mashing kid should get ONE new chat, not five: guard the
+    // in-flight create, and reuse an existing empty chat instead of stacking
+    // "New chat" rows in the study log.
+    if (creatingChatRef.current) return;
+    const existingEmpty = conversations.find((c) => (c.messageCount ?? 0) === 0);
+    if (existingEmpty) {
+      setActiveId(null);
+      openConversation(existingEmpty.id);
+      setInputText("");
+      setAttachments([]);
+      setMobileView("chat");
+      return;
+    }
+    creatingChatRef.current = true;
     try {
       const { conversation } = await api.createConversation();
       setConversations((prev) => [conversation, ...prev]);
@@ -346,11 +377,19 @@ export default function App() {
       setMobileView("chat");
     } catch (e) {
       console.error("Could not start a new chat:", e);
+      showToast("Could not start a new chat. Please try once more. 🌱");
+    } finally {
+      creatingChatRef.current = false;
     }
   };
 
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    // A 13px icon sits right next to the row a kid taps to open a chat: one
+    // slip must not silently erase their study history.
+    const doomed = conversations.find((c) => c.id === id);
+    const label = doomed?.title && doomed.title !== "New chat" ? `“${doomed.title}”` : "this chat";
+    if (!window.confirm(`Delete ${label}? Its messages go away for good (saved notebook lines stay).`)) return;
     const remaining = conversations.filter((c) => c.id !== id);
     setConversations(remaining);
     api.deleteConversation(id).catch(() => {});
@@ -400,8 +439,27 @@ export default function App() {
   const handleSendMessage = async (textToSend?: string, opts?: { deep?: boolean; silent?: boolean }) => {
     const text = (textToSend ?? inputText).trim();
     const atts = opts?.silent ? [] : attachments;
-    if ((!text && atts.length === 0) || !activeId || isGenerating) return;
-    const convId = activeId;
+    // sendingRef guards synchronously: React state (isGenerating) settles a
+    // tick later, so a fast double-tap could fire two sends and charge two
+    // credits before the button ever disabled.
+    if ((!text && atts.length === 0) || isGenerating || sendingRef.current) return;
+    sendingRef.current = true;
+    // No open conversation (the list failed to load, or was emptied): create
+    // one on the spot instead of silently swallowing the student's question.
+    let convId = activeId;
+    if (!convId) {
+      try {
+        const { conversation } = await api.createConversation();
+        setConversations((prev) => [conversation, ...prev.filter((c) => c.id !== conversation.id)]);
+        setActiveId(conversation.id);
+        setChatHistory([]);
+        convId = conversation.id;
+      } catch {
+        sendingRef.current = false;
+        showToast("Could not reach your study log. Check your internet and try again. 🌱");
+        return;
+      }
+    }
     const isFirstMessage = chatHistory.length === 0;
     const deep = opts?.deep === true;
 
@@ -609,6 +667,7 @@ export default function App() {
         setChatHistory((prev) => [...prev.filter((m) => m.id !== streamId), errorMsg]);
       }
     } finally {
+      sendingRef.current = false;
       setIsGenerating(false);
     }
   };
@@ -886,7 +945,7 @@ export default function App() {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-5 bg-editorial-ivory text-editorial-charcoal px-6 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-editorial-sage motion-safe:animate-[clarify-breathe_2.2s_ease-in-out_infinite]">
-          <span className="font-serif text-2xl italic leading-none text-editorial-ivory">C</span>
+          <span className="kod-display text-2xl leading-none text-editorial-ivory">C</span>
         </div>
         <div>
           <p className="text-sm font-medium text-editorial-sage">Preparing your study desk</p>
@@ -902,7 +961,7 @@ export default function App() {
         fallback={
           <div className="flex min-h-[100dvh] items-center justify-center bg-night">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-editorial-sage">
-              <span className="font-serif text-2xl italic leading-none text-editorial-ivory">C</span>
+              <span className="kod-display text-2xl leading-none text-editorial-ivory">C</span>
             </div>
           </div>
         }
@@ -918,10 +977,10 @@ export default function App() {
       {/* Header */}
       <nav className="flex justify-between items-center px-4 py-3 md:px-8 border-b border-editorial-line bg-editorial-ivory">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-editorial-sage flex items-center justify-center shrink-0">
-            <span className="text-editorial-ivory font-serif italic text-lg leading-none">C</span>
+          <div className="w-8 h-8 rounded-[2px] bg-editorial-sage flex items-center justify-center shrink-0">
+            <span className="kod-display text-lg leading-none" style={{ color: "var(--color-editorial-ivory)" }}>C</span>
           </div>
-          <span className="font-serif italic text-xl tracking-tight text-editorial-charcoal">Clarify.AI</span>
+          <span className="kod-display hidden sm:inline text-xl tracking-tight text-editorial-charcoal">Clarify.AI</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -935,6 +994,7 @@ export default function App() {
               setShowUpgrade(true);
             }}
           />
+          <ThemeToggle className="!h-9 !w-9 shrink-0" />
           <button
             onClick={() => setNotebookOpen(true)}
             title="Pre-exam notebook"
@@ -962,7 +1022,7 @@ export default function App() {
             onClick={() => logout()}
             title="Sign out"
             aria-label="Sign out"
-            className="w-9 h-9 rounded-full border border-editorial-line flex items-center justify-center text-editorial-charcoal/60 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-full border border-editorial-line flex items-center justify-center text-editorial-charcoal/60 hover:bg-red-50 hover:text-red-700 hover:border-red-200 dark:hover:bg-red-950/50 dark:hover:text-red-300 dark:hover:border-red-900 transition-all cursor-pointer shrink-0"
             id="btn-logout"
           >
             <LogOut size={15} />
@@ -1003,7 +1063,7 @@ export default function App() {
                 <p className="text-xs text-editorial-charcoal/60">{profile.grade} · {profile.language}</p>
               </div>
             </div>
-            <p className="text-xs text-editorial-charcoal/70 font-serif italic border-t border-editorial-line-light pt-2.5">
+            <p className="text-xs text-editorial-charcoal/70 kod-display border-t border-editorial-line-light pt-2.5">
               "{profile.examGoals || "Learn deeply with real analogies"}"
             </p>
           </div>
@@ -1076,7 +1136,7 @@ export default function App() {
                 </button>
 
                 {isAddingChapter && (
-                  <form onSubmit={handleAddChapter} className="bg-white border border-editorial-line p-3 rounded-xl flex flex-col gap-2">
+                  <form onSubmit={handleAddChapter} className="bg-surface border border-editorial-line p-3 rounded-xl flex flex-col gap-2">
                     <input
                       type="text"
                       required
@@ -1116,10 +1176,10 @@ export default function App() {
                             className={`px-2 py-0.5 rounded-full transition-colors capitalize ${
                               ch.mastery === m
                                 ? m === "weak"
-                                  ? "bg-red-50 text-red-800 border border-red-200"
+                                  ? "bg-red-50 text-red-800 border border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-900"
                                   : m === "developing"
-                                  ? "bg-yellow-50 text-yellow-800 border border-yellow-200"
-                                  : "bg-emerald-50/70 text-emerald-800 border border-emerald-200"
+                                  ? "bg-yellow-50 text-yellow-800 border border-yellow-200 dark:bg-yellow-950/50 dark:text-yellow-300 dark:border-yellow-900"
+                                  : "bg-emerald-50/70 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900"
                                 : "text-editorial-charcoal/60 hover:bg-editorial-stone"
                             }`}
                           >
@@ -1140,7 +1200,7 @@ export default function App() {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.06, ease: [0.22, 0.61, 0.36, 1] }}
-          className={`${mobileView === "chat" ? "flex" : "hidden"} lg:flex flex-1 min-h-0 flex-col bg-white/40 p-3 md:p-6 overflow-hidden`}
+          className={`${mobileView === "chat" ? "flex" : "hidden"} lg:flex flex-1 min-h-0 flex-col bg-surface/40 p-3 md:p-6 overflow-hidden`}
         >
 
           {/* Live status strip */}
@@ -1166,10 +1226,10 @@ export default function App() {
             {chatHistory.length === 0 && !isGenerating && (
               <div className="m-auto w-full max-w-lg rounded-3xl border border-editorial-line bg-editorial-stone/30 px-6 py-8 md:px-9 md:py-10 text-center flex flex-col items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-editorial-sage shrink-0">
-                  <span className="font-serif text-2xl italic leading-none text-editorial-ivory">C</span>
+                  <span className="kod-display text-2xl leading-none text-editorial-ivory">C</span>
                 </div>
                 <div>
-                  <h2 className="font-serif italic text-2xl md:text-[26px] leading-snug text-editorial-charcoal">
+                  <h2 className="kod-display text-2xl md:text-[26px] leading-snug text-editorial-charcoal">
                     What are we working through today{profile.name ? `, ${profile.name.split(" ")[0]}` : ""}?
                   </h2>
                   <p className="mt-2.5 text-sm leading-relaxed text-editorial-sage">
@@ -1177,13 +1237,13 @@ export default function App() {
                   </p>
                 </div>
                 <div className="w-full mt-2">
-                  <p className="mb-2 text-left font-serif italic text-sm text-editorial-charcoal/70">Not sure where to start?</p>
+                  <p className="mb-2 text-left kod-display text-sm text-editorial-charcoal/70">Not sure where to start?</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {SUGGESTED_QUERIES.map((q, idx) => (
                       <button
                         key={idx}
                         onClick={() => selectSuggestedPrompt(q.prompt)}
-                        className="group flex items-start gap-3 text-left px-4 py-3 rounded-2xl border border-editorial-line bg-white hover:border-editorial-sage/50 hover:bg-editorial-sage/[0.06] motion-safe:hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+                        className="group flex items-start gap-3 text-left px-4 py-3 rounded-2xl border border-editorial-line bg-surface hover:border-editorial-sage/50 hover:bg-editorial-sage/[0.06] motion-safe:hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
                       >
                         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-editorial-sage/10 text-editorial-sage">
                           <BookOpen size={15} />
@@ -1234,7 +1294,7 @@ export default function App() {
                             key={i}
                             href={att.dataUrl}
                             download={att.name}
-                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-editorial-line-light text-xs text-editorial-charcoal hover:bg-editorial-stone"
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface border border-editorial-line-light text-xs text-editorial-charcoal hover:bg-editorial-stone"
                           >
                             <FileText size={14} className="text-editorial-sage" />
                             <span className="truncate max-w-40">{att.name}</span>
@@ -1262,7 +1322,7 @@ export default function App() {
                         message.verification === "passed"
                           ? "inline-flex rounded-full bg-editorial-sage/10 px-2.5 py-1 font-medium text-editorial-sage"
                           : message.verification === "unavailable"
-                          ? "text-amber-800"
+                          ? "text-amber-800 dark:text-amber-300"
                           : "text-editorial-sage"
                       }`}
                     >
@@ -1288,7 +1348,7 @@ export default function App() {
                         <Search size={10} className="text-editorial-sage" /> Sources:
                       </span>
                       {message.sources.map((src, sIdx) => (
-                        <a key={sIdx} href={src.uri} target="_blank" rel="noreferrer" className="text-[10px] bg-[#FAF9F6] text-editorial-sage px-2.5 py-1 rounded-full border border-editorial-line-light flex items-center gap-1 hover:bg-editorial-sage/10">
+                        <a key={sIdx} href={src.uri} target="_blank" rel="noreferrer" className="text-[10px] bg-editorial-stone text-editorial-sage px-2.5 py-1 rounded-full border border-editorial-line-light flex items-center gap-1 hover:bg-editorial-sage/10">
                           {src.title}
                           <ExternalLink size={8} />
                         </a>
@@ -1379,7 +1439,7 @@ export default function App() {
                   {att.isImage ? (
                     <img src={att.dataUrl} alt={att.name} className="h-16 w-16 object-cover rounded-lg border border-editorial-line" />
                   ) : (
-                    <div className="h-16 w-16 flex flex-col items-center justify-center gap-1 rounded-lg border border-editorial-line bg-white text-editorial-sage px-1">
+                    <div className="h-16 w-16 flex flex-col items-center justify-center gap-1 rounded-lg border border-editorial-line bg-surface text-editorial-sage px-1">
                       <FileText size={18} />
                       <span className="text-[8px] text-editorial-charcoal/60 truncate w-full text-center">{att.name}</span>
                     </div>
@@ -1423,7 +1483,7 @@ export default function App() {
             )}
 
           {/* Input */}
-          <div className="mt-3 bg-white border border-editorial-line rounded-2xl p-2 flex items-center gap-1.5 shadow-sm focus-within:border-editorial-sage focus-within:ring-1 focus-within:ring-editorial-sage/30 transition-all">
+          <div className="mt-3 bg-surface border border-editorial-line rounded-2xl p-2 flex items-center gap-1.5 shadow-sm focus-within:border-editorial-sage focus-within:ring-1 focus-within:ring-editorial-sage/30 transition-all">
             <input
               ref={fileInputRef}
               type="file"
@@ -1445,7 +1505,7 @@ export default function App() {
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+              onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && handleSendMessage()}
               onPaste={handlePaste}
               placeholder="Ask anything, or paste / upload a photo of a question…"
               className="flex-1 px-2 py-2 bg-transparent text-editorial-charcoal focus:outline-none text-sm md:text-base placeholder-editorial-charcoal/30"
@@ -1470,7 +1530,7 @@ export default function App() {
               className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 cursor-pointer motion-safe:transition-all motion-safe:active:scale-[0.96] ${
                 isGenerating
                   ? "bg-editorial-sage/70 text-white"
-                  : "bg-editorial-sage hover:bg-editorial-sage/90 text-white disabled:bg-transparent disabled:text-editorial-sage/40 disabled:border disabled:border-editorial-sage/25"
+                  : "bg-editorial-sage hover:bg-editorial-sage/90 text-white disabled:bg-editorial-stone disabled:text-editorial-charcoal/45 disabled:border disabled:border-editorial-line"
               }`}
               disabled={isGenerating || (!inputText.trim() && attachments.length === 0)}
               id="btn-send-chat"
@@ -1568,7 +1628,7 @@ export default function App() {
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
                   <Settings size={18} className="text-editorial-sage" />
-                  <h3 className="text-base font-serif font-medium text-editorial-charcoal">Study Preferences</h3>
+                  <h3 className="text-base kod-display font-medium text-editorial-charcoal">Study Preferences</h3>
                 </div>
                 <button onClick={() => setIsEditingProfile(false)} className="text-editorial-charcoal/40 hover:text-editorial-charcoal text-2xl cursor-pointer leading-none">&times;</button>
               </div>
@@ -1581,14 +1641,14 @@ export default function App() {
                     required
                     value={editProfileForm.name}
                     onChange={(e) => setEditProfileForm({ ...editProfileForm, name: e.target.value })}
-                    className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-white focus:outline-none focus:ring-1 focus:ring-editorial-sage text-editorial-charcoal"
+                    className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-surface focus:outline-none focus:ring-1 focus:ring-editorial-sage text-editorial-charcoal"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-semibold text-editorial-charcoal/70">Board / Exam</label>
-                    <select value={editProfileForm.board} onChange={(e) => setEditProfileForm({ ...editProfileForm, board: e.target.value })} className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-white focus:outline-none text-editorial-charcoal">
+                    <select value={editProfileForm.board} onChange={(e) => setEditProfileForm({ ...editProfileForm, board: e.target.value })} className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-surface focus:outline-none text-editorial-charcoal">
                       <option value="None">General Study</option>
                       <option value="CBSE">CBSE Board</option>
                       <option value="ICSE">ICSE Board</option>
@@ -1599,14 +1659,14 @@ export default function App() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-semibold text-editorial-charcoal/70">Grade / Level</label>
-                    <input type="text" value={editProfileForm.grade} onChange={(e) => setEditProfileForm({ ...editProfileForm, grade: e.target.value })} className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-white focus:outline-none focus:ring-1 focus:ring-editorial-sage text-editorial-charcoal" />
+                    <input type="text" value={editProfileForm.grade} onChange={(e) => setEditProfileForm({ ...editProfileForm, grade: e.target.value })} className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-surface focus:outline-none focus:ring-1 focus:ring-editorial-sage text-editorial-charcoal" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-semibold text-editorial-charcoal/70">Language</label>
-                    <select value={editProfileForm.language} onChange={(e) => setEditProfileForm({ ...editProfileForm, language: e.target.value })} className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-white focus:outline-none text-editorial-charcoal">
+                    <select value={editProfileForm.language} onChange={(e) => setEditProfileForm({ ...editProfileForm, language: e.target.value })} className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-surface focus:outline-none text-editorial-charcoal">
                       <option value="English">Pure English</option>
                       <option value="Hinglish">Hinglish (Hindi + English)</option>
                       <option value="Hindi">Hindi</option>
@@ -1614,7 +1674,7 @@ export default function App() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-semibold text-editorial-charcoal/70">Preferred analogy</label>
-                    <select value={editProfileForm.preferredAnalogy} onChange={(e) => setEditProfileForm({ ...editProfileForm, preferredAnalogy: e.target.value })} className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-white focus:outline-none text-editorial-charcoal">
+                    <select value={editProfileForm.preferredAnalogy} onChange={(e) => setEditProfileForm({ ...editProfileForm, preferredAnalogy: e.target.value })} className="px-4 py-2.5 border border-editorial-line rounded-xl text-sm bg-surface focus:outline-none text-editorial-charcoal">
                       <option value="Daily Life">Daily Life / Everyday objects</option>
                       <option value="Sports">Sports / Cricket / Football</option>
                       <option value="Cooking">Cooking & Kitchen recipes</option>
@@ -1628,7 +1688,7 @@ export default function App() {
                   <label className="text-[11px] font-semibold text-editorial-charcoal/70">Voice (for spoken answers)</label>
                   <div className="grid grid-cols-5 gap-1.5">
                     {(["Kore", "Zephyr", "Puck", "Charon", "Fenrir"] as const).map((vc) => (
-                      <button key={vc} type="button" onClick={() => setSelectedVoice(vc)} className={`py-2 px-1 rounded-full text-[11px] font-medium text-center border transition-colors cursor-pointer ${selectedVoice === vc ? "bg-editorial-sage border-editorial-sage text-white" : "bg-white border-editorial-line-light hover:bg-editorial-stone text-editorial-charcoal"}`}>
+                      <button key={vc} type="button" onClick={() => setSelectedVoice(vc)} className={`py-2 px-1 rounded-full text-[11px] font-medium text-center border transition-colors cursor-pointer ${selectedVoice === vc ? "bg-editorial-sage border-editorial-sage text-white" : "bg-surface border-editorial-line-light hover:bg-editorial-stone text-editorial-charcoal"}`}>
                         {vc}
                       </button>
                     ))}
@@ -1637,7 +1697,7 @@ export default function App() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-semibold text-editorial-charcoal/70">Exam goals</label>
-                  <textarea rows={2} value={editProfileForm.examGoals} onChange={(e) => setEditProfileForm({ ...editProfileForm, examGoals: e.target.value })} className="px-4 py-3 border border-editorial-line rounded-xl text-sm bg-white focus:outline-none focus:ring-1 focus:ring-editorial-sage resize-none text-editorial-charcoal" />
+                  <textarea rows={2} value={editProfileForm.examGoals} onChange={(e) => setEditProfileForm({ ...editProfileForm, examGoals: e.target.value })} className="px-4 py-3 border border-editorial-line rounded-xl text-sm bg-surface focus:outline-none focus:ring-1 focus:ring-editorial-sage resize-none text-editorial-charcoal" />
                 </div>
 
                 <div className="flex justify-end gap-2 mt-2">
@@ -1679,7 +1739,10 @@ function UsagePill({ subscription, onClick }: { subscription?: Subscription; onC
       shortLabel = `${left} today`;
       alert = left <= 0;
     } else if (state === "active") {
-      label = remaining == null ? `${planName} · Unlimited` : `${planName} · ${remaining} left`;
+      // "Unlimited · Unlimited" reads like a stutter: the plan name alone says it.
+      label = remaining == null
+        ? (planName === "Unlimited" ? "Unlimited" : `${planName} · Unlimited`)
+        : `${planName} · ${remaining} left`;
       shortLabel = remaining == null ? "Unlimited" : `${remaining} left`;
       alert = remaining != null && remaining <= 0;
     } else {
@@ -1695,7 +1758,7 @@ function UsagePill({ subscription, onClick }: { subscription?: Subscription; onC
       id="btn-usage-plan"
       className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
         alert
-          ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+          ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-950"
           : "border-editorial-line text-editorial-charcoal/70 hover:bg-editorial-stone"
       }`}
     >
@@ -1725,7 +1788,7 @@ function SmartFactsLoader({ seedMessage }: { seedMessage: string }) {
       <div className="p-4 rounded-2xl bg-editorial-stone/40 border border-editorial-line-light rounded-tl-sm max-w-md">
         <div className="flex items-center gap-1.5 mb-2 text-editorial-sage">
           <Sparkles size={12} />
-          <span className="font-serif italic text-xs">Did you know?</span>
+          <span className="kod-display text-xs">Did you know?</span>
         </div>
         <AnimatePresence mode="wait">
           <motion.p
@@ -1734,7 +1797,7 @@ function SmartFactsLoader({ seedMessage }: { seedMessage: string }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.4 }}
-            className="text-sm text-editorial-charcoal/80 font-serif italic leading-relaxed"
+            className="text-sm text-editorial-charcoal/80 kod-display leading-relaxed"
           >
             {fact.text}
           </motion.p>

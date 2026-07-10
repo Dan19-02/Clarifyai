@@ -65,7 +65,7 @@ export async function startCheckout(plan: string, account: Account, cb: Checkout
     description: `${order.planName} plan, 30 days`,
     image: "/favicon.svg",
     prefill: { email: order.prefill.email || account.email, name: order.prefill.name || account.profile.name },
-    theme: { color: "#6f7d5f" }, // editorial sage
+    theme: { color: "#3560ee" }, // brand cobalt (2026-07-11 rebrand)
     handler: async (resp: any) => {
       try {
         const { subscription } = await api.verifyPayment({

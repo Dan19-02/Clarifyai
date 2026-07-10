@@ -8,7 +8,17 @@
       name="description"
       content="Clarify.AI is a calm, patient AI teacher and doubt solver for CBSE, ICSE, State board, JEE and NEET students in class 6 to 12. It explains the doubts you missed in class, again and again, a different way each time, until it clicks. Physics, Chemistry, Maths, Biology and more, in English, Hinglish and Hindi."
     />
-    <meta name="theme-color" content="#15150e" />
+    <meta name="theme-color" content="#ffffff" />
+    <!-- Apply the stored theme before first paint so dark mode never flashes light. -->
+    <script>
+      try {
+        if (localStorage.getItem("clarify-theme") === "dark") {
+          document.documentElement.dataset.theme = "dark";
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute("content", "#101319");
+        }
+      } catch (e) {}
+    </script>
     <link rel="canonical" href="https://clarifyai.in/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 

@@ -1,42 +1,122 @@
 /**
- * Act one: the hour. The page opens at 11:04 pm, the hour Clarify.AI was
- * built for. One phrase, the story's protagonist, drifts across the dark;
- * a thin lamplight glow intrudes from the bottom edge, promising a light
- * source not yet seen. Then the filmstrip: the day that got the student
- * here, replayed as three timestamped vignettes in the same unbroken night.
+ * Act one, flat-playful edition: white page, mono display voice, cobalt CTA,
+ * and a hand-drawn line-art doodle that sketches itself in. The 11:04 pm
+ * story survives as a four-stamp strip: the day that got the student here,
+ * ending on the cobalt card where the catch-net arrives. The stat trio below
+ * is real numbers only: the blind-panel accuracy score, languages and
+ * boards, and the honest price anchor.
  */
 import { motion } from "motion/react";
-import { ArrowDown } from "lucide-react";
-import { DRIFT_WORDS } from "./words";
-import { useCalm, fadeUp, stamp, EASE } from "./reveals";
-import ScatterWords from "./ScatterWords";
+import { ThemeToggle } from "../ThemeToggle";
+import { useCalm, fadeUp, EASE } from "./reveals";
 import type { AuthMode } from "./Landing";
 
 interface HourActProps {
   onAuth: (mode: AuthMode) => void;
 }
 
-/** The one drifting phrase: the sentence the whole page follows. */
-const PHRASE = DRIFT_WORDS[0];
-
-const VIGNETTES = [
+const STAMPS = [
   {
     time: "10:14 am",
-    lines:
-      "The teacher says “rate of change of momentum”, taps the board twice, and moves on.",
-    mirrored: false,
+    line: "The teacher says “rate of change of momentum”, taps the board twice, and moves on.",
+    cobalt: false,
   },
   {
     time: "10:15 am",
-    lines: "Half the class nods. You copy the words down, hoping they will make sense tonight.",
-    mirrored: true,
+    line: "Half the class nods. You copy the words down, hoping they will make sense tonight.",
+    cobalt: false,
   },
   {
     time: "11:02 pm",
-    lines: "They do not. And the old feeling reaches for you: the quiet panic of falling behind.",
-    mirrored: false,
+    line: "They do not. And the old feeling reaches for you: the quiet panic of falling behind.",
+    cobalt: false,
+  },
+  {
+    time: "11:04 pm",
+    line: "You open Clarify.AI. Tonight, the panic never arrives. Tonight you have a catch-net.",
+    cobalt: true,
   },
 ];
+
+const STATS = [
+  {
+    big: "9.62 / 10",
+    caption:
+      "Accuracy in our own blind evaluations: six independent AI judges, nine systems, real board-exam questions. Highest score of any system tested.",
+  },
+  {
+    big: "3 languages",
+    caption: "English, Hinglish and हिंदी, across CBSE, ICSE, State boards, JEE and NEET, class 6 to 12.",
+  },
+  {
+    big: "₹199 / month",
+    caption: "After one free week, no card. Every plan is a one-time 30-day payment. No auto-renewal, no lock-in.",
+  },
+];
+
+/** Hand-drawn line-art: a phone catching a doubt under a lamp. */
+function HeroDoodle({ calm }: { calm: boolean }) {
+  const draw = (len: number, delay: number) =>
+    calm
+      ? {}
+      : ({ ["--len" as string]: String(len), ["--d" as string]: `${delay}s` } as React.CSSProperties);
+  const cls = calm ? "" : "kod-draw";
+  return (
+    <svg
+      viewBox="0 0 520 440"
+      fill="none"
+      aria-hidden="true"
+      className="h-auto w-full max-w-[520px] text-ink"
+    >
+      {/* ribbon path weaving through the scene */}
+      <path
+        d="M10 330 C 120 260, 150 400, 260 350 S 430 280, 505 330"
+        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+        className={cls} style={draw(700, 0.1)} pathLength={700}
+      />
+      {/* the phone */}
+      <rect x="180" y="90" width="160" height="270" rx="18"
+        stroke="currentColor" strokeWidth="3" className={cls} style={draw(900, 0.2)} pathLength={900} />
+      <line x1="235" y1="118" x2="285" y2="118" stroke="currentColor" strokeWidth="3" strokeLinecap="round"
+        className={cls} style={draw(60, 0.5)} pathLength={60} />
+      {/* the doubt bubble, typed exactly as heard */}
+      <g className={calm ? "" : "kod-bob"}>
+        <rect x="60" y="140" width="150" height="54" rx="10"
+          stroke="var(--color-cobalt-bright)" strokeWidth="2.5" fill="var(--color-page)"
+          className={cls} style={draw(420, 0.6)} pathLength={420} />
+        <path d="M110 194 l-8 16 22 -16" stroke="var(--color-cobalt-bright)" strokeWidth="2.5" fill="var(--color-page)"
+          className={cls} style={draw(60, 0.8)} pathLength={60} />
+        <text x="135" y="173" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="17" fontWeight="700" fill="var(--color-cobalt-bright)">
+          F = ma ??
+        </text>
+      </g>
+      {/* the answer sheet sliding out of the phone */}
+      <rect x="212" y="180" width="150" height="120" rx="6"
+        stroke="currentColor" strokeWidth="2.5" fill="var(--color-page)"
+        className={cls} style={draw(560, 0.9)} pathLength={560} />
+      <line x1="228" y1="208" x2="330" y2="208" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={cls} style={draw(110, 1.1)} pathLength={110} />
+      <line x1="228" y1="230" x2="345" y2="230" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={cls} style={draw(120, 1.2)} pathLength={120} />
+      <line x1="228" y1="252" x2="310" y2="252" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={cls} style={draw(90, 1.3)} pathLength={90} />
+      {/* the examiner tick on the sheet */}
+      <circle cx="340" cy="275" r="16" stroke="var(--color-lime)" strokeWidth="3" className={cls} style={draw(110, 1.5)} pathLength={110} />
+      <path d="M332 275 l6 7 12 -13" stroke="var(--color-lime)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+        className={cls} style={draw(40, 1.7)} pathLength={40} />
+      {/* the lamp that stays on */}
+      <path d="M395 60 l40 0 -12 -34 -16 0 z" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"
+        className={cls} style={draw(180, 0.4)} pathLength={180} />
+      <line x1="415" y1="60" x2="415" y2="96" stroke="currentColor" strokeWidth="2.5" className={cls} style={draw(40, 0.6)} pathLength={40} />
+      <path d="M392 84 a30 30 0 0 0 46 0" stroke="var(--color-cobalt-bright)" strokeWidth="2.5" strokeLinecap="round"
+        className={cls} style={draw(80, 0.8)} pathLength={80} />
+      {/* scattered study dust */}
+      <text x="72" y="90" fontFamily="JetBrains Mono, monospace" fontSize="15" fill="currentColor" opacity="0.5">011</text>
+      <text x="420" y="220" fontFamily="JetBrains Mono, monospace" fontSize="15" fill="currentColor" opacity="0.5">sin²θ</text>
+      <text x="55" y="290" fontFamily="JetBrains Mono, monospace" fontSize="15" fill="currentColor" opacity="0.5">b²-4ac</text>
+      <circle cx="470" cy="120" r="5" stroke="currentColor" strokeWidth="2" className={cls} style={draw(35, 1.0)} pathLength={35} />
+      <circle cx="120" cy="380" r="5" stroke="var(--color-cobalt-bright)" strokeWidth="2" className={cls} style={draw(35, 1.2)} pathLength={35} />
+      <path d="M455 380 l10 0 m-5 -5 l0 10" stroke="var(--color-lime)" strokeWidth="2.5" strokeLinecap="round" className={cls} style={draw(30, 1.4)} pathLength={30} />
+    </svg>
+  );
+}
 
 export default function HourAct({ onAuth }: HourActProps) {
   const calm = useCalm();
@@ -45,154 +125,139 @@ export default function HourAct({ onAuth }: HourActProps) {
     calm
       ? {}
       : {
-          initial: { opacity: 0, y: 12 },
+          initial: { opacity: 0, y: 16 },
           animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.8, delay, ease: EASE },
+          transition: { duration: 0.6, delay, ease: EASE },
         };
 
+  const navLink =
+    "hidden text-sm font-medium text-ink-dim transition-colors hover:text-cobalt-bright focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt-bright md:block";
+
   return (
-    <div className="bg-night">
-      {/* ---- The hour ---- */}
-      <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-        <header className="relative z-10 flex items-center justify-between gap-3 px-5 py-5 md:px-10">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-editorial-sage">
-              <span className="font-serif text-lg italic leading-none text-editorial-ivory">C</span>
-            </div>
-            <span className="font-serif text-lg italic tracking-tight text-chalk">Clarify.AI</span>
+    <div className="bg-page text-ink">
+      {/* ---- Header ---- */}
+      <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-5 md:px-8">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-[2px] bg-cobalt">
+            <span className="kod-display text-lg leading-none text-white">C</span>
           </div>
-          <nav className="flex items-center gap-2 md:gap-6" aria-label="Main">
-            <a href="#watch" className="hidden text-sm text-chalk-dim transition-colors hover:text-chalk focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sage-bright md:block">
-              Watch it teach
-            </a>
-            <a href="#pricing" className="hidden text-sm text-chalk-dim transition-colors hover:text-chalk focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sage-bright md:block">
-              Pricing
-            </a>
-            <button
-              onClick={() => onAuth("login")}
-              className="rounded-full border border-night-line px-4 py-2 text-sm text-chalk transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-bright"
-            >
-              Sign in
-            </button>
-            <button
-              onClick={() => onAuth("signup")}
-              className="hidden rounded-full bg-sage-bright px-4 py-2 text-sm font-semibold text-night transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-bright sm:block"
-            >
-              Start free
-            </button>
-          </nav>
-        </header>
-
-        {/* Lamplight from the next act, intruding at the bottom edge. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-32"
-          style={{ background: "linear-gradient(to top, rgba(240, 238, 226, 0.07), transparent)" }}
-        />
-
-        {/* The protagonist phrase drifts in whatever dark the viewport has to
-            spare: the zone absorbs all leftover hero space, so the phrase can
-            never collide with the reading block below it. */}
-        <div aria-hidden="true" className="pointer-events-none relative min-h-6 flex-1 select-none overflow-hidden">
-          <span
-            className="landing-drift absolute whitespace-nowrap font-serif italic text-chalk"
-            style={{
-              top: "calc(50% - 0.7em)",
-              right: "8%",
-              opacity: 0.3,
-              fontSize: "clamp(1rem, 2.2vw, 1.5rem)",
-              filter: "blur(0.7px)",
-              ["--dur" as string]: PHRASE.dur,
-              ["--delay" as string]: PHRASE.delay,
-              ["--dx" as string]: PHRASE.dx,
-              ["--dy" as string]: PHRASE.dy,
-              ["--rot" as string]: PHRASE.rot,
-            }}
-          >
-            {PHRASE.text}
-          </span>
+          <span className="kod-display text-lg tracking-tight text-ink">Clarify.AI</span>
         </div>
+        <nav className="flex items-center gap-3 md:gap-7" aria-label="Main">
+          <a href="#watch" className={navLink}>See a real answer</a>
+          <a href="#features" className={navLink}>What it does</a>
+          <a href="#why" className={navLink}>Why Clarify</a>
+          <a href="#pricing" className={navLink}>Pricing</a>
+          {/* Below md the nav links hide; parents hunt for the price first,
+              so Pricing alone keeps a visible seat next to the toggle. */}
+          <a
+            href="#pricing"
+            className="text-sm font-medium text-ink-dim transition-colors hover:text-cobalt-bright focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cobalt-bright md:hidden"
+          >
+            Pricing
+          </a>
+          <ThemeToggle />
+          <button
+            onClick={() => onAuth("login")}
+            className="kod-btn-ghost px-4 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt-bright"
+          >
+            Sign in
+          </button>
+          <button
+            onClick={() => onAuth("signup")}
+            className="kod-btn hidden px-4 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:block"
+          >
+            Start free
+          </button>
+        </nav>
+      </header>
 
-        <div className="relative z-[1] flex flex-col justify-end px-6 pb-24 pt-4 md:px-12 lg:px-20">
-          <div className="max-w-3xl">
-            <motion.p {...enter(0.15)} className="font-serif text-lg italic text-chalk-dim md:text-xl">
-              Physics was six hours ago. The sentence is still not making sense.
-            </motion.p>
+      {/* ---- Hero ---- */}
+      <section className="mx-auto max-w-6xl px-5 pb-16 pt-10 md:px-8 md:pb-24 md:pt-16">
+        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)] lg:gap-8">
+          <div>
             <motion.h1
               id="hero-title"
               tabIndex={-1}
-              {...enter(0.5)}
-              className="mt-3 font-serif text-[clamp(4.2rem,15vw,9rem)] italic leading-none tracking-[-0.02em] text-chalk focus:outline-none"
+              {...enter(0.05)}
+              className="kod-display landing-balance text-[clamp(2.1rem,6vw,3.8rem)] leading-[1.06] text-ink focus:outline-none"
             >
-              11:04 pm.
-              <span className="sr-only">
-                {" "}The hour Clarify.AI was built for: a patient AI teacher and doubt solver for CBSE, ICSE, State boards, JEE and NEET.
-              </span>
+              Doubt at 11:04&nbsp;pm?
+              <br />
+              <span className="text-cobalt-bright">Explained. Again.</span>
+              <br />
+              Until it lands!
             </motion.h1>
             <motion.p
-              {...enter(0.95)}
-              className="landing-pretty mt-6 max-w-xl text-base leading-relaxed text-chalk-dim md:text-lg"
+              {...enter(0.2)}
+              className="landing-pretty mt-6 max-w-xl text-base leading-relaxed text-ink-dim md:text-lg"
             >
-              This is the hour Clarify.AI was built for: a patient AI teacher that
-              takes the exact sentence that flew past you in class and explains it
-              again, a different way each time, until it lands. CBSE, ICSE, State
-              boards, JEE and NEET, class 6 to 12.
+              A patient AI teacher that takes the exact sentence that flew past
+              you in class and explains it again, a different way each time,
+              until it lands. CBSE, ICSE, State boards, JEE and NEET, class 6 to 12.
             </motion.p>
-            <motion.div {...enter(1.25)} className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <motion.p
+              {...enter(0.3)}
+              lang="hi"
+              className="landing-pretty landing-devanagari mt-3 max-w-xl text-[15px] leading-relaxed text-ink-dim"
+            >
+              क्लास 6 से 12 के हर स्टूडेंट के लिए एक धैर्यवान AI टीचर: जो एक ही बात
+              को नए तरीक़े से तब तक समझाता है, जब तक समझ न आ जाए।
+            </motion.p>
+            <motion.div {...enter(0.4)} className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <button
                 onClick={() => onAuth("signup")}
-                className="w-full rounded-full bg-sage-bright px-8 py-3.5 text-sm font-semibold text-night transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-bright sm:w-auto"
+                className="kod-btn w-full px-8 py-3.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:w-auto"
               >
                 Start free tonight
               </button>
               <a
                 href="#watch"
-                className="w-full rounded-full border border-night-line px-8 py-3.5 text-center text-sm font-medium text-chalk transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-bright sm:w-auto"
+                className="kod-btn-ghost w-full px-8 py-3.5 text-center text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt-bright sm:w-auto"
               >
-                Watch it teach
+                See a real answer
               </a>
             </motion.div>
-            <motion.p {...enter(1.6)} className="mt-7 text-[13px] tracking-wide text-chalk-dim">
+            <motion.p {...enter(0.5)} className="mt-6 text-[13px] leading-relaxed tracking-wide text-ink-dim">
+              One week free, no card. Then from ₹199 a month, no auto-renewal.
+              <span className="mx-2" aria-hidden="true">&middot;</span>
               English &middot; Hinglish &middot; <span lang="hi" className="landing-devanagari">हिंदी</span>
             </motion.p>
           </div>
+          <motion.div {...enter(0.25)} className="mx-auto w-full max-w-[520px]">
+            <HeroDoodle calm={calm} />
+          </motion.div>
         </div>
-
-        <motion.div
-          aria-hidden="true"
-          className="absolute bottom-7 left-1/2 -translate-x-1/2 text-chalk-dim"
-          {...(calm
-            ? {}
-            : { animate: { y: [0, 7, 0] }, transition: { duration: 2.2, repeat: Infinity, ease: "easeInOut" } })}
-        >
-          <ArrowDown size={18} />
-        </motion.div>
       </section>
 
-      {/* ---- The day that got you here ---- */}
-      <section aria-label="The day that got you here" className="relative overflow-hidden">
-        <ScatterWords />
-        <div className="relative z-10 mx-auto max-w-6xl px-6 md:px-12">
-          {VIGNETTES.map((v) => (
-            <div
-              key={v.time}
-              className={`flex min-h-[58svh] items-center ${v.mirrored ? "justify-end" : "justify-start"}`}
+      {/* ---- The day that got you here: four stamps ---- */}
+      <section aria-label="The day that got you here" className="mx-auto max-w-6xl px-5 pb-16 md:px-8 md:pb-24">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {STAMPS.map((s, i) => (
+            <motion.div
+              key={s.time}
+              {...fadeUp(calm, calm ? 0 : i * 0.08)}
+              className={`rounded-[2px] border-2 p-5 ${
+                s.cobalt ? "border-cobalt-bright bg-cobalt text-white" : "border-ink-line bg-page text-ink"
+              }`}
             >
-              <div className={`max-w-xl ${v.mirrored ? "text-right" : "text-left"}`}>
-                <motion.p
-                  {...stamp(calm)}
-                  className="font-serif text-[clamp(2.2rem,6vw,4rem)] italic leading-none text-chalk-dim"
-                >
-                  {v.time}
-                </motion.p>
-                <motion.p
-                  {...fadeUp(calm, calm ? 0 : 0.1)}
-                  className="landing-balance mt-4 font-serif text-[clamp(1.4rem,3.2vw,2.1rem)] italic leading-snug text-chalk"
-                >
-                  {v.lines}
-                </motion.p>
-              </div>
-            </div>
+              <p className={`kod-display text-2xl ${s.cobalt ? "text-lime-pale" : "text-cobalt-bright"}`}>{s.time}</p>
+              <p className={`landing-pretty mt-3 text-[15px] leading-relaxed ${s.cobalt ? "text-white" : "text-ink-dim"}`}>
+                {s.line}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ---- Real numbers ---- */}
+      <section aria-label="Clarify.AI in numbers" className="mx-auto max-w-6xl px-5 pb-20 md:px-8 md:pb-28">
+        <div className="grid gap-10 border-t-2 border-ink-line pt-10 md:grid-cols-3">
+          {STATS.map((s, i) => (
+            <motion.div key={s.big} {...fadeUp(calm, calm ? 0 : i * 0.08)}>
+              <p className="kod-display text-[clamp(2rem,4.5vw,3rem)] leading-none text-ink">{s.big}</p>
+              <p className="landing-pretty mt-3 max-w-xs text-sm leading-relaxed text-ink-dim">{s.caption}</p>
+            </motion.div>
           ))}
         </div>
       </section>

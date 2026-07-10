@@ -16,7 +16,11 @@ export const EASE = [0.22, 1, 0.36, 1] as const;
 export function useCalm(): boolean {
   const prefersReduced = useReducedMotion();
   const staticStart = useStaticStart();
-  return Boolean(prefersReduced) || staticStart;
+  // Ancient WebViews without IntersectionObserver could never fire
+  // whileInView, leaving reveal targets at opacity 0 forever: collapse every
+  // reveal to its final state there instead.
+  const noObserver = typeof IntersectionObserver === "undefined";
+  return Boolean(prefersReduced) || staticStart || noObserver;
 }
 
 /** Paragraphs and small blocks: a plain, quiet rise. */

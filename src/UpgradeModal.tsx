@@ -131,11 +131,11 @@ export default function UpgradeModal({ open, onClose, account, subscription, rea
             </button>
 
             <div className="max-w-2xl">
-              <h2 className="font-serif text-[clamp(1.6rem,4vw,2.4rem)] italic leading-tight tracking-[-0.01em] text-editorial-charcoal">
+              <h2 className="kod-display text-[clamp(1.6rem,4vw,2.4rem)] leading-tight tracking-[-0.01em] text-editorial-charcoal">
                 Keep your patient teacher going.
               </h2>
               {reason ? (
-                <p className="mt-3 rounded-2xl border border-editorial-line-light bg-white px-4 py-3 text-sm leading-relaxed text-editorial-charcoal/80">
+                <p className="mt-3 rounded-2xl border border-editorial-line-light bg-surface px-4 py-3 text-sm leading-relaxed text-editorial-charcoal/80">
                   {reason}
                 </p>
               ) : (
@@ -154,14 +154,14 @@ export default function UpgradeModal({ open, onClose, account, subscription, rea
                   <div
                     key={plan.id}
                     className={`flex flex-col rounded-3xl p-6 ${
-                      plan.featured ? "bg-night text-chalk" : "border border-editorial-line bg-white text-editorial-charcoal"
+                      plan.featured ? "border-2 border-editorial-sage bg-editorial-sage/10 text-editorial-charcoal" : "border border-editorial-line bg-surface text-editorial-charcoal"
                     }`}
                   >
-                    <h3 className={`font-serif text-lg italic ${plan.featured ? "text-sage-bright" : "text-editorial-sage"}`}>
+                    <h3 className={`kod-display text-lg text-editorial-sage`}>
                       {plan.name}
                     </h3>
                     <p className="mt-3 flex items-baseline gap-1.5">
-                      <span className="font-serif text-4xl italic tracking-tight">₹{plan.price}</span>
+                      <span className="kod-display text-4xl tracking-tight">₹{plan.price}</span>
                       <span className={`text-xs ${plan.featured ? "text-chalk-dim" : "text-editorial-charcoal/60"}`}>/ month</span>
                     </p>
                     <p className="mt-3 text-sm font-semibold">{plan.queries}</p>
@@ -203,7 +203,7 @@ export default function UpgradeModal({ open, onClose, account, subscription, rea
             </div>
 
             {passActive && (
-              <p className="mt-4 rounded-xl border border-editorial-line-light bg-white px-4 py-2.5 text-xs leading-relaxed text-editorial-charcoal/75">
+              <p className="mt-4 rounded-xl border border-editorial-line-light bg-surface px-4 py-2.5 text-xs leading-relaxed text-editorial-charcoal/75">
                 {renewLocked
                   ? `Your ${subscription?.planName} pass runs until ${passEndsOn}. Renewal opens in its last ${RENEW_WINDOW_DAYS} days, so nothing you have paid for is lost.`
                   : `Your ${subscription?.planName} pass ends on ${passEndsOn}. A pass bought now starts the moment the current one ends, so no days are lost.`}

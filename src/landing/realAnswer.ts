@@ -178,3 +178,33 @@ See the pattern?
 That's the whole law. F = ma is just a compact way to say: "Force, mass, and acceleration are linked this way."
 
 Does that feel clearer? Want to try the cricket ball question now, or should I walk through one tiny example with you first?`;
+
+/**
+ * REAL product output, captured verbatim on 10 July 2026 against the running
+ * backend (Kimi answer brain via ANSWER_BACKEND, standard mode, State Board
+ * profile, 7th Grade, Hindi, Daily Life analogies). Deep-check examiner pass:
+ * "passed". Unedited: the reply ends by asking the student to try one, and
+ * the landing page keeps that ending on purpose.
+ */
+export const REAL_HINDI_QUESTION =
+  "साधारण ब्याज कैसे निकालते हैं? जैसे 500 रुपये पर 4% सालाना ब्याज हो, 2 साल के लिए। formula समझ नहीं आता।";
+
+export const REAL_HINDI_ANSWER = `फॉर्मूला उलझन भरा लगता है, पर इसका मतलब बहुत सीधा है: **साधारण ब्याज = (मूलधन × दर × समय) ÷ 100**।
+
+यानी जो पैसा उधार दिया, उस पर हर साल कितने प्रतिशत किराया लग रहा है, और कितने साल तक। आखिर में 100 से भाग इसलिए देते हैं क्योंकि दर **प्रतिशत** में होती है।
+
+सोचो कि तुमने 500 रुपये किसी को उधार दिए। 4% का मतलब है, हर 100 रुपये पर एक साल में 4 रुपये ब्याज। 500 में 5 सौ होते हैं, तो एक साल का ब्याज 5 × 4 = 20 रुपये होगा। दो साल में 20 × 2 = 40 रुपये।
+
+अब इसी को फॉर्मूले में डालो:
+
+$$
+\\text{ब्याज} = \\frac{500 \\times 4 \\times 2}{100} = \\frac{4000}{100} = 40 \\text{ रुपये}
+$$
+
+कुल पैसा वापस मिलेगा = 500 + 40 = **540 रुपये**।
+
+याद रखने का सीधा तरीका: पहले 100 रुपये का हिसाब निकालो, फिर सालों की संख्या से गुणा कर दो।
+
+एक जगह जहाँ गलती होती है: अगर समय महीनों में दिया हो, जैसे 6 महीने, तो उसे साल में बदलना पड़ता है। 6 महीने का मतलब होता है आधा साल, यानी 0.5।
+
+अब तुम बताओ: अगर 800 रुपये पर 5% सालाना ब्याज हो, 3 साल के लिए, तो ब्याज कितना होगा?`;

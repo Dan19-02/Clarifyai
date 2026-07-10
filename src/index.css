@@ -1,28 +1,96 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500;600&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap');
 @import "tailwindcss";
 
+/* Tailwind's dark: variant follows our toggle (data-theme on <html>), not
+   the OS setting, so utilities like dark:text-amber-300 flip with the app. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Lora", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-editorial-ivory: #FAF9F6;
-  --color-editorial-charcoal: #1A1A1A;
-  --color-editorial-sage: #5A5A40;
-  --color-editorial-stone: #F4F4F0;
-  --color-editorial-line: rgba(26, 26, 26, 0.1);
-  --color-editorial-line-light: rgba(26, 26, 26, 0.05);
+  /* Product (workspace) palette, unified with the landing's flat system on
+     2026-07-11: the product's paper is a whisper-blue white, its accent is
+     the same cobalt, so the app and the website read as one product. The
+     editorial-* NAMES stay because the workspace markup is written against
+     them. Dark values live on :root[data-theme="dark"] below. */
+  --color-editorial-ivory: #fbfcff;
+  --color-editorial-charcoal: #2e2c2c;
+  --color-editorial-sage: #3560ee;
+  --color-editorial-stone: #eef2fd;
+  --color-editorial-line: rgba(13, 25, 65, 0.12);
+  --color-editorial-line-light: rgba(13, 25, 65, 0.06);
 
-  /* Landing "night" palette: the dark classroom the story opens in.
-     Warm olive-cast darks so the night and the ivory day share one family. */
-  --color-night: #15150e;
-  --color-night-soft: #202016;
-  --color-night-deep: #100f0a;
-  --color-night-line: rgba(240, 238, 226, 0.14);
-  --color-chalk: #f0eee2;
-  --color-chalk-dim: rgba(240, 238, 226, 0.62);
-  --color-sage-bright: #b9b98d;
+  /* Landing palette, flat-playful edition (2026-07-10, Kodland-concept
+     redesign): white page, near-black ink, one loud cobalt, lime pills.
+     Flat color, hard 2px corners, bold borders, no shadows. All ink/surface
+     pairs hold WCAG 4.5:1 for body text. */
+  --color-page: #ffffff;
+  --color-ink: #2e2c2c;
+  --color-ink-dim: rgba(46, 44, 44, 0.72);
+  /* cobalt paints SURFACES (panels, buttons): white text is safe on it in
+     both themes. cobalt-bright paints TEXT and BORDERS: it brightens in the
+     dark so accents stay legible on the near-black page. */
+  --color-cobalt: #3560ee;
+  --color-cobalt-bright: #3560ee;
+  --color-cobalt-deep: #1d4dec;
+  --color-cobalt-line: rgba(53, 96, 238, 0.35);
+  --color-lime: #ade118;
+  --color-lime-pale: #cffa61;
+  --color-sky: #bce2fe;
+  --color-chip: rgba(13, 25, 65, 0.05);
+  --color-ink-line: rgba(13, 25, 65, 0.12);
+  /* Ink that must stay dark even in dark mode (text on lime/sky pills). */
+  --color-pill-ink: #2e2c2c;
+  /* The always-dark slab (footer) in both themes. */
+  --color-slab: #2e2c2c;
+  /* Raised input/panel surface: white on the light theme, a lifted slate in
+     the dark. The workspace's old hardcoded bg-white maps here. */
+  --color-surface: #ffffff;
+
+  /* Legacy landing tokens, aliased to the flat system so stray references
+     follow theme flips; new code uses the flat tokens above. */
+  --color-night: var(--color-page);
+  --color-night-soft: var(--color-chip);
+  --color-night-deep: var(--color-chip);
+  --color-night-line: var(--color-ink-line);
+  --color-chalk: var(--color-ink);
+  --color-chalk-dim: var(--color-ink-dim);
+  --color-sage-bright: var(--color-cobalt-bright);
 }
+
+/* Dark mode: one attribute on <html> flips every token both surfaces use.
+   Utilities reference var(--color-*), so no markup changes are needed.
+   Cobalt brightens a step so text and borders keep AA contrast on the
+   near-black page; pills keep dark ink via --color-pill-ink. */
+:root[data-theme="dark"] {
+  --color-page: #101319;
+  --color-ink: #e8ecf5;
+  --color-ink-dim: rgba(232, 236, 245, 0.72);
+  --color-cobalt: #3a5df0;
+  --color-cobalt-bright: #8fa5ff;
+  --color-cobalt-deep: #4a6cf5;
+  --color-cobalt-line: rgba(143, 165, 255, 0.45);
+  --color-chip: rgba(255, 255, 255, 0.06);
+  --color-ink-line: rgba(232, 236, 245, 0.16);
+  --color-slab: #0b0e13;
+  --color-surface: #1a1f2b;
+
+  --color-editorial-ivory: #171b24;
+  --color-editorial-charcoal: #e6e9f0;
+  --color-editorial-sage: #8fa5ff;
+  --color-editorial-stone: #1f2430;
+  --color-editorial-line: rgba(232, 236, 245, 0.14);
+  --color-editorial-line-light: rgba(232, 236, 245, 0.08);
+  color-scheme: dark;
+}
+
+/* In dark mode two accent surfaces go LIGHT (the sage chips and charcoal
+   buttons of the workspace), so their printed text flips to dark ink
+   regardless of the light-theme text utility on the same element. */
+:root[data-theme="dark"] .bg-editorial-sage { color: #10131a; }
+:root[data-theme="dark"] .bg-editorial-charcoal { color: #10131a; }
 
 /* Landing-only helpers */
 .landing-balance { text-wrap: balance; }
@@ -36,42 +104,82 @@
    with unicode-range, so the file only downloads when Hindi glyphs paint. */
 .landing-devanagari { font-family: "Tiro Devanagari Hindi", "Lora", Georgia, serif; }
 
-/* Pools of lamplight. Pre-composited radial gradients painted once; any
-   later animation on them is transform and opacity only, so a low-end phone
-   never re-rasterizes a blur. */
-.lamp-pool {
-  background: radial-gradient(
-    closest-side,
-    rgba(240, 238, 226, 0.13),
-    rgba(240, 238, 226, 0.05) 55%,
-    transparent 78%
-  );
+/* The landing's display voice: bold mono, tight leading, hard stops. */
+.kod-display {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-/* Paper held up in the dark: the warm bloom around the lit ivory sheets. */
-.lit-sheet {
-  box-shadow:
-    0 0 90px 12px rgba(240, 238, 226, 0.08),
-    0 0 28px 2px rgba(240, 238, 226, 0.06);
+/* Flat pill chips (Kodland grammar: 100px radius, no shadow). */
+.kod-pill {
+  border-radius: 100px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.9rem;
+  white-space: nowrap;
 }
 
-/* The half-caught words drifting across the night classroom. Pure CSS so the
-   hero stays cheap on low-end phones. Each span sets its own --dx/--dy/--dur. */
-@keyframes landing-drift {
-  0%   { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
-  50%  { transform: translate3d(var(--dx, 14px), var(--dy, -20px), 0) rotate(var(--rot, 0deg)); }
-  100% { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
+/* Flat cards and panels: hard 2px corners, bold ink/cobalt borders,
+   no shadows anywhere. Hover lifts are transform-only. */
+.kod-card {
+  border-radius: 2px;
+  background: var(--color-page);
+  border: 2px solid var(--color-ink-line);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease;
 }
-.landing-drift {
-  animation: landing-drift var(--dur, 18s) ease-in-out var(--delay, 0s) infinite;
-}
+.kod-card:hover { transform: translateY(-4px); border-color: var(--color-cobalt); }
 
-/* The page's one deliberate loop: the Still fuzzy chip, breathing. */
-@keyframes landing-breathe {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+/* Solid flat buttons, cobalt with a deeper hover; transform-only motion. */
+.kod-btn {
+  border-radius: 2px;
+  background: var(--color-cobalt);
+  color: #ffffff;
+  font-weight: 600;
+  transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.landing-breathe { animation: landing-breathe 4s ease-in-out infinite; }
+.kod-btn:hover { background: var(--color-cobalt-deep); transform: translateY(-2px); }
+.kod-btn:active { transform: translateY(0) scale(0.98); }
+.kod-btn-ghost {
+  border-radius: 2px;
+  border: 2px solid var(--color-ink);
+  color: var(--color-ink);
+  font-weight: 600;
+  transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.kod-btn-ghost:hover { background: var(--color-chip); transform: translateY(-2px); }
+
+/* Horizontal snap carousels: native scroll for butter on low-end phones. */
+.kod-rail {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.kod-rail::-webkit-scrollbar { display: none; }
+.kod-rail > * { scroll-snap-align: start; flex-shrink: 0; }
+
+/* The hero doodle draws itself in: pure CSS so it costs nothing after load. */
+@keyframes kod-draw { to { stroke-dashoffset: 0; } }
+.kod-draw {
+  stroke-dasharray: var(--len, 600);
+  stroke-dashoffset: var(--len, 600);
+  animation: kod-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0s) forwards;
+}
+@keyframes kod-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.kod-bob { animation: kod-bob 5s ease-in-out infinite; }
+
+/* Real product output keeps the product's own ivory paper, set inside the
+   flat white cards: honest pixels, framed by the new system. */
+.lit-sheet { box-shadow: none; border: 2px solid var(--color-ink-line); }
 
 /* The loading gate's monogram: a slow, patient breath. Driven by CSS (not a
    motion/react loop) so a motion-safe: variant fully halts it for reduced
@@ -85,19 +193,36 @@
    Each section reserves a placeholder close to its real rendered height, so
    the first reveal does not pop the scrollbar/scroll position. */
 .landing-cv { content-visibility: auto; }
-.landing-cv-ladder { contain-intrinsic-size: auto 1850px; }
-.landing-cv-register { contain-intrinsic-size: auto 950px; }
-.landing-cv-cards { contain-intrinsic-size: auto 1100px; }
-.landing-cv-pricing { contain-intrinsic-size: auto 1150px; }
-.landing-cv-finale { contain-intrinsic-size: auto 1300px; }
+/* Reservations sized near real rendered heights (mobile first, desktop
+   override) so far-scroll jumps do not pop the scrollbar. */
+.landing-cv-ladder { contain-intrinsic-size: auto 3200px; }
+.landing-cv-doors { contain-intrinsic-size: auto 1100px; }
+.landing-cv-register { contain-intrinsic-size: auto 1500px; }
+.landing-cv-why { contain-intrinsic-size: auto 1900px; }
+.landing-cv-cards { contain-intrinsic-size: auto 2300px; }
+.landing-cv-mission { contain-intrinsic-size: auto 800px; }
+.landing-cv-pricing { contain-intrinsic-size: auto 2300px; }
+.landing-cv-finale { contain-intrinsic-size: auto 1100px; }
+@media (min-width: 768px) {
+  .landing-cv-ladder { contain-intrinsic-size: auto 2100px; }
+  .landing-cv-doors { contain-intrinsic-size: auto 900px; }
+  .landing-cv-register { contain-intrinsic-size: auto 1100px; }
+  .landing-cv-why { contain-intrinsic-size: auto 1300px; }
+  .landing-cv-cards { contain-intrinsic-size: auto 1500px; }
+  .landing-cv-mission { contain-intrinsic-size: auto 650px; }
+  .landing-cv-pricing { contain-intrinsic-size: auto 1650px; }
+  .landing-cv-finale { contain-intrinsic-size: auto 950px; }
+}
 
-/* Dotted leaders for the finale's index page. */
-.landing-leader { border-bottom: 2px dotted rgba(240, 238, 226, 0.26); }
+/* Dotted leaders for the finale's index list. */
+.landing-leader { border-bottom: 2px dotted var(--color-ink-line); }
 
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-drift, .landing-breathe { animation: none !important; }
+  .kod-draw { animation: none !important; stroke-dashoffset: 0 !important; }
+  .kod-bob { animation: none !important; }
+  .kod-card:hover, .kod-btn:hover, .kod-btn-ghost:hover { transform: none; }
 }

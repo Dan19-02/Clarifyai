@@ -92,6 +92,21 @@ export interface SignupInput {
   confidenceLevel: number;
 }
 
+/** One warm line for every failure a student should never have to parse. */
+const FRIENDLY_NETWORK_ERROR =
+  "The connection slipped for a moment. Check your internet and try once more. 🌱";
+const FRIENDLY_SERVER_ERROR =
+  "Something went wrong on our side, not yours. Please try that again in a moment. 🌱";
+
+/** True when the server sent a human-written message (vs a raw status). */
+function friendlyErrorText(data: any, status: number): string {
+  const text = typeof data?.error === "string" ? data.error.trim() : "";
+  // Server copy is trusted only when it reads like a sentence for a person,
+  // not a JSON blob or bare status text.
+  if (text && !text.startsWith("{") && !/^[A-Z_]+$/.test(text)) return text;
+  return status >= 500 ? FRIENDLY_SERVER_ERROR : `Request failed (${status})`;
+}
+
 async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -100,21 +115,20 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  // const res = await fetch(`/api${path}`, { ...options, headers });
-  const res = await fetch(`${API_BASE}/api${path}`, {
-  ...options,
-  headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api${path}`, { ...options, headers });
+  } catch (err) {
+    // fetch() itself only throws on network problems: warm copy, status 0 so
+    // callers can tell it apart from a server response.
+    console.error(`[api] network failure on ${path}:`, err);
+    throw new ApiError(FRIENDLY_NETWORK_ERROR, 0);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     // Token rejected → clear it so the app drops back to the login screen.
     if (res.status === 401) setToken(null);
-    throw new ApiError(
-      (data as any).error || `Request failed (${res.status})`,
-      res.status,
-      (data as any).code,
-      (data as any).subscription
-    );
+    throw new ApiError(friendlyErrorText(data, res.status), res.status, (data as any).code, (data as any).subscription);
   }
   return data as T;
 }

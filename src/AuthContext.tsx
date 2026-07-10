@@ -4,7 +4,7 @@
  * a stored token on load, and exposes login / signup / logout.
  */
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { api, getToken, setToken, type Account, type SignupInput } from "./api";
+import { ApiError, api, getToken, setToken, type Account, type SignupInput } from "./api";
 import type { Subscription } from "./types";
 
 interface AuthContextValue {
@@ -36,7 +36,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api
       .me()
       .then(({ user }) => setAccount(user))
-      .catch(() => setToken(null))
+      .catch((err) => {
+        // Only a real 401 means the session is dead. A network blip or a
+        // server hiccup must NOT log the student out: flaky connections are
+        // the norm for this audience, and api.ts already clears the token
+        // itself when any request comes back 401.
+        if (err instanceof ApiError && err.status === 401) setToken(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 

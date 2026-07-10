@@ -43,7 +43,7 @@ export function NotebookViewer({ sections }: NotebookViewerProps) {
           ))}
         </div>
 
-        <div className="flex-1 bg-white border border-editorial-line-light border-t-2 border-t-editorial-sage/25 rounded-2xl p-4 md:p-5 flex flex-col gap-2 min-w-0 max-w-full relative overflow-y-auto">
+        <div className="flex-1 bg-surface border border-editorial-line-light border-t-2 border-t-editorial-sage/25 rounded-2xl p-4 md:p-5 flex flex-col gap-2 min-w-0 max-w-full relative overflow-y-auto">
           {sections[activeTabIdx] && (
             <motion.div
               key={activeTabIdx}
@@ -55,7 +55,7 @@ export function NotebookViewer({ sections }: NotebookViewerProps) {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 pb-3 border-b border-editorial-line-light mb-3">
                   <span className="text-xl">{sections[activeTabIdx].emoji}</span>
-                  <h3 className="text-sm font-serif font-bold text-editorial-charcoal">{sections[activeTabIdx].title}</h3>
+                  <h3 className="text-sm kod-display font-bold text-editorial-charcoal">{sections[activeTabIdx].title}</h3>
                 </div>
                 <div className="max-w-full overflow-x-auto">
                   <Markdown>{sections[activeTabIdx].content}</Markdown>

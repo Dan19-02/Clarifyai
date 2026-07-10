@@ -126,7 +126,7 @@ function MermaidBlock({ chart }: { chart: string }) {
     <div
       role="img"
       aria-label="Concept flowchart drawn by Clarify.AI"
-      className="my-3 flex justify-center overflow-x-auto rounded-xl border border-editorial-line-light bg-white p-3"
+      className="my-3 flex justify-center overflow-x-auto rounded-xl border border-editorial-line-light bg-surface p-3"
       dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
     >
       {svg ? undefined : <span className="text-xs text-editorial-charcoal/40">Drawing diagram…</span>}
@@ -149,6 +149,28 @@ function DiagramPending() {
       <span className="text-xs text-editorial-charcoal/70">Diagram will draw when the answer completes…</span>
     </div>
   );
+}
+
+/**
+ * The teaching models sometimes emit LaTeX with backslash delimiters
+ * (\( x \) and \[ x \]) despite the prompt asking for dollars. remark-math
+ * only parses $/$$, so without this normalisation a student sees raw TeX
+ * source in the middle of a math answer. Applied at render time so old saved
+ * answers and notebook entries are healed too. Code fences are left alone.
+ */
+function normalizeMathDelimiters(md: string): string {
+  if (!md.includes("\\(") && !md.includes("\\[")) return md;
+  // Split out fenced code blocks so TeX-looking content inside them survives.
+  return md
+    .split(/(```[\s\S]*?```|`[^`]*`)/g)
+    .map((part, i) =>
+      i % 2 === 1
+        ? part
+        : part
+            .replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) => `$$${inner}$$`)
+            .replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) => `$${inner}$`)
+    )
+    .join("");
 }
 
 function MarkdownImpl({ children, streaming }: MarkdownProps) {
@@ -203,9 +225,9 @@ function MarkdownImpl({ children, streaming }: MarkdownProps) {
               {children}
             </a>
           ),
-          h1: ({ children }) => <h1 className="font-serif text-xl font-bold mt-1">{children}</h1>,
-          h2: ({ children }) => <h2 className="font-serif text-lg font-semibold mt-3">{children}</h2>,
-          h3: ({ children }) => <h3 className="font-serif text-base font-semibold text-editorial-sage mt-2">{children}</h3>,
+          h1: ({ children }) => <h1 className="kod-display text-xl font-bold mt-1">{children}</h1>,
+          h2: ({ children }) => <h2 className="kod-display text-lg font-semibold mt-3">{children}</h2>,
+          h3: ({ children }) => <h3 className="kod-display text-base font-semibold text-editorial-sage mt-2">{children}</h3>,
           ul: ({ children }) => <ul className="ml-4 list-disc space-y-1">{children}</ul>,
           ol: ({ children }) => <ol className="ml-4 list-decimal space-y-1">{children}</ol>,
           blockquote: ({ children }) => (
@@ -215,7 +237,7 @@ function MarkdownImpl({ children, streaming }: MarkdownProps) {
           ),
         }}
       >
-        {children}
+        {normalizeMathDelimiters(children)}
       </ReactMarkdown>
     </div>
   );

@@ -90,7 +90,7 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
   };
 
   const input =
-    "w-full rounded-xl border border-editorial-line bg-white px-4 py-3 text-sm text-editorial-charcoal placeholder-editorial-charcoal/35 focus:outline-none focus:ring-1 focus:ring-editorial-sage";
+    "w-full rounded-xl border border-editorial-line bg-surface px-4 py-3 text-sm text-editorial-charcoal placeholder-editorial-charcoal/35 focus:outline-none focus:ring-1 focus:ring-editorial-sage";
   const label = "text-[10px] uppercase tracking-[0.1em] font-bold text-editorial-sage";
 
   return (
@@ -99,7 +99,7 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
         <button
           ref={backRef}
           onClick={onBack}
-          className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full border border-editorial-line bg-white px-3.5 py-2 text-xs text-editorial-charcoal/70 transition-colors hover:bg-editorial-stone focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-editorial-sage md:left-6 md:top-6"
+          className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full border border-editorial-line bg-surface px-3.5 py-2 text-xs text-editorial-charcoal/70 transition-colors hover:bg-editorial-stone focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-editorial-sage md:left-6 md:top-6"
         >
           <ArrowLeft size={13} />
           Back
@@ -111,12 +111,12 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
             <GraduationCap className="text-editorial-ivory" size={22} />
           </div>
           <div>
-            <h1 className="font-serif text-3xl italic tracking-tight">Clarify.AI</h1>
+            <h1 className="kod-display text-3xl tracking-tight">Clarify.AI</h1>
             <p className="mt-1 text-sm text-editorial-charcoal/60">Your warm, patient personal AI teacher.</p>
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-editorial-line-light bg-white p-6 shadow-sm sm:p-8">
+        <div className="rounded-[28px] border border-editorial-line-light bg-surface p-6 shadow-sm sm:p-8">
           {/* Login / Signup toggle */}
           <div className="mb-6 flex gap-1 rounded-full border border-editorial-line-light bg-editorial-stone/40 p-1">
             {(["login", "signup"] as const).map((m) => (
@@ -128,7 +128,7 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
                   setError(null);
                 }}
                 className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold capitalize transition-all ${
-                  mode === m ? "bg-white text-editorial-charcoal shadow-sm" : "text-editorial-charcoal/70 hover:text-editorial-charcoal"
+                  mode === m ? "bg-surface text-editorial-charcoal shadow-sm" : "text-editorial-charcoal/70 hover:text-editorial-charcoal"
                 }`}
               >
                 {m === "login" ? "Sign in" : "Create account"}

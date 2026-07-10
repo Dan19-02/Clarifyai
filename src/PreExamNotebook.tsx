@@ -127,7 +127,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-serif text-lg italic text-editorial-charcoal">
+          <h2 className="truncate kod-display text-lg text-editorial-charcoal">
             {level.view === "points" ? level.chapter : level.view === "chapters" ? level.subject : "Pre-exam notebook"}
           </h2>
           <p className="truncate text-[11px] text-editorial-charcoal/70">
@@ -167,7 +167,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-editorial-sage/10 text-editorial-sage">
                 <Lock size={22} />
               </div>
-              <h3 className="font-serif text-2xl italic text-editorial-charcoal">
+              <h3 className="kod-display text-2xl text-editorial-charcoal">
                 {summary.savedCount > 0
                   ? `${summary.savedCount} saved point${summary.savedCount === 1 ? "" : "s"} waiting for you.`
                   : "Your revision shelf, ready when you are."}
@@ -193,7 +193,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
               {(summary.subjects?.length || 0) === 0 ? (
                 <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-14 text-center">
                   <BookMarked size={26} className="text-editorial-sage" />
-                  <h3 className="font-serif text-xl italic text-editorial-charcoal">Nothing saved yet.</h3>
+                  <h3 className="kod-display text-xl text-editorial-charcoal">Nothing saved yet.</h3>
                   <p className="text-sm leading-relaxed text-editorial-charcoal/70">
                     When an answer makes something click, select the lines you want to keep and tap Save lines.
                     They will file themselves here, ready for revision.
@@ -205,10 +205,10 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                     <button
                       key={s.subject}
                       onClick={() => setLevel({ view: "chapters", subject: s.subject })}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-editorial-line bg-white p-5 text-left transition-all hover:border-editorial-sage/40 cursor-pointer"
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-editorial-line bg-surface p-5 text-left transition-all hover:border-editorial-sage/40 cursor-pointer"
                     >
                       <div>
-                        <h3 className="font-serif text-lg italic text-editorial-charcoal">{s.subject}</h3>
+                        <h3 className="kod-display text-lg text-editorial-charcoal">{s.subject}</h3>
                         <p className="mt-1 text-xs text-editorial-charcoal/70">
                           {s.chapters.length} chapter{s.chapters.length === 1 ? "" : "s"} · {s.count} point{s.count === 1 ? "" : "s"}
                         </p>
@@ -228,7 +228,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                 <button
                   key={c.chapter}
                   onClick={() => openChapter(level.subject, c.chapter)}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-editorial-line bg-white px-5 py-4 text-left transition-all hover:border-editorial-sage/40 cursor-pointer"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-editorial-line bg-surface px-5 py-4 text-left transition-all hover:border-editorial-sage/40 cursor-pointer"
                 >
                   <div>
                     <h4 className="text-sm font-semibold text-editorial-charcoal">{c.chapter}</h4>
@@ -246,7 +246,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
           {!loading && level.view === "points" && (
             <div className="flex flex-col gap-5">
               {/* Clarify notes */}
-              <div className="rounded-2xl border border-editorial-line bg-white p-5">
+              <div className="rounded-2xl border border-editorial-line bg-surface p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="flex items-center gap-1.5 text-sm font-semibold text-editorial-charcoal">
                     <Sparkles size={14} className="text-editorial-sage" /> Clarify notes
@@ -300,7 +300,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
               {/* The saved points */}
               <div className="flex flex-col gap-2.5">
                 {entries.map((e) => (
-                  <div key={e.id} className="group rounded-2xl border border-editorial-line-light bg-white p-4">
+                  <div key={e.id} className="group rounded-2xl border border-editorial-line-light bg-surface p-4">
                     {e.question && (
                       <p className="mb-1.5 text-[11px] italic text-editorial-charcoal/60">from: "{e.question.slice(0, 120)}"</p>
                     )}

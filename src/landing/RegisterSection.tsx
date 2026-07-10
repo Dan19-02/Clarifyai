@@ -1,22 +1,20 @@
 /**
- * Act four: the register. It is 11 pm and nobody is awake to check the
- * teacher's work, so the student's own doubt opens the act in her own words.
- * The honesty machinery answers as a chalk ledger on the blackboard surface,
- * the only tonal shift inside the night. A faint Devanagari word leaks in
- * at the ledger's foot: the next act arriving early.
+ * Act four, flat-playful edition: the honesty machinery, opened by the
+ * question in the words it actually arrives in. Four flat rows on a chip
+ * ground; the Deep-check row wears the product's real chip.
  */
 import { motion } from "motion/react";
 import { CheckCircle2 } from "lucide-react";
-import { useCalm, fadeUp, drawX } from "./reveals";
+import { useCalm, fadeUp } from "./reveals";
 
 const ROWS = [
   {
-    title: "The whole answer, or nothing",
-    body: "No word-by-word streaming theatre. Clarify.AI writes the complete answer, checks it, and only then shows it to the student, whole.",
+    title: "Rough work, then the real answer",
+    body: "You will watch a draft being written in real time, like rough work in the margin. That draft is not what you are asked to trust. Once it is complete, an examiner pass reads the whole of it, rechecks the facts and calculations, and the corrected, verified answer takes its place. Only the checked version stays on your screen, and only the checked version reaches your notebook.",
   },
   {
     title: "Deep-check, a second examiner",
-    body: "One tap under any answer sends it to a second examiner pass that double-checks its facts and calculations. Slower, and worth it for the answers that matter.",
+    body: "Every answer already faces this examiner before it settles on your screen. The Deep-check button under an answer calls the same examiner back for one more, slower look: worth it for the answers that matter, and it never costs a query.",
     chip: true,
   },
   {
@@ -33,53 +31,42 @@ export default function RegisterSection() {
   const calm = useCalm();
 
   return (
-    <section className="landing-cv landing-cv-register relative bg-night-soft px-4 py-20 md:px-8 md:py-28" aria-label="How Clarify.AI stays honest">
-      <div className="relative z-10 mx-auto max-w-6xl">
-        <motion.p {...fadeUp(calm)} className="font-serif text-xl italic text-chalk md:text-2xl">
+    <section className="landing-cv landing-cv-register bg-chip px-5 py-16 text-ink md:px-8 md:py-24" aria-label="How Clarify.AI stays honest">
+      <div className="mx-auto max-w-6xl">
+        <motion.p {...fadeUp(calm)} className="kod-display text-xl text-ink md:text-2xl">
           <span lang="hi-Latn">par yeh galat hua toh?</span>
-          <span className="ml-3 text-sm not-italic text-chalk-dim">But what if it gets it wrong?</span>
+          <span className="ml-3 text-sm font-normal text-ink-dim" style={{ fontFamily: "Inter, sans-serif" }}>
+            But what if it gets it wrong?
+          </span>
         </motion.p>
 
-        <div className="mt-10 grid items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
+        <div className="mt-8 grid items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
           <div className="lg:sticky lg:top-16">
-            <h2 className="landing-balance font-serif text-[clamp(2.1rem,5vw,3.25rem)] italic leading-tight tracking-[-0.01em] text-chalk">
+            <h2 className="kod-display landing-balance text-[clamp(1.9rem,5vw,3rem)] leading-[1.08] text-ink">
               It would rather be right than fast.
             </h2>
-            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-chalk-dim md:text-base">
+            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-ink-dim md:text-base">
               An AI that teaches students cannot afford to be confidently wrong.
               So this teacher is engineered to slow down in exactly the places
               where wrong answers hide.
             </p>
           </div>
 
-          <div className="relative">
+          <div className="flex flex-col gap-4">
             {ROWS.map((row, i) => (
-              <div key={row.title}>
-                {i > 0 && <motion.div {...drawX(calm)} className="h-px origin-left bg-night-line" />}
-                <div className="grid gap-2 py-6 md:grid-cols-[230px_1fr] md:gap-8 md:py-7">
-                  <h3 className="font-serif text-lg italic leading-snug text-chalk">{row.title}</h3>
-                  <div>
-                    <p className="landing-pretty max-w-prose text-[15px] leading-relaxed text-chalk-dim">{row.body}</p>
-                    {row.chip && (
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none mt-3 inline-flex items-center gap-1.5 rounded-full border border-editorial-sage bg-editorial-sage px-3 py-1.5 text-xs font-medium text-white select-none"
-                      >
-                        <CheckCircle2 size={13} /> Deep-check
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <motion.div key={row.title} {...fadeUp(calm, calm ? 0 : i * 0.06)} className="kod-card p-6">
+                <h3 className="kod-display text-base leading-snug text-ink md:text-lg">{row.title}</h3>
+                <p className="landing-pretty mt-2 max-w-prose text-[15px] leading-relaxed text-ink-dim">{row.body}</p>
+                {row.chip && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none mt-3 inline-flex items-center gap-1.5 rounded-full border border-editorial-sage bg-editorial-sage px-3 py-1.5 text-xs font-medium text-white select-none"
+                  >
+                    <CheckCircle2 size={13} /> Deep-check
+                  </span>
+                )}
+              </motion.div>
             ))}
-            {/* The next act, leaking in early. */}
-            <span
-              aria-hidden="true"
-              className="landing-devanagari pointer-events-none absolute -bottom-8 right-0 select-none font-serif text-2xl italic text-chalk/20"
-              style={{ transform: "rotate(-2deg)" }}
-            >
-              हिंदी
-            </span>
           </div>
         </div>
       </div>

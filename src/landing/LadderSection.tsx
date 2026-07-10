@@ -1,14 +1,14 @@
 /**
- * Act three: it stays until it lands. Proof before pitch: the REAL
- * re-explanation captured from the live product comes first, as a second,
- * smaller sheet of lit paper. Only after the visitor has watched it work do
- * the five rungs name the shape of what they just saw, as a chalk ledger.
+ * Act three, flat-playful edition: proof before pitch. The REAL re-explanation
+ * (one tap on Still fuzzy?, captured live) sits beside the pitch, then the
+ * five rungs land as numbered flat cards, Kodland lesson-steps style. The
+ * metering truth rides along: re-explains never cost a query.
  */
 import { motion } from "motion/react";
 import { Sparkles } from "lucide-react";
 import { Markdown } from "../Markdown";
 import { REAL_REEXPLANATION, REAL_STILL_FUZZY_PROMPT } from "./realAnswer";
-import { useCalm, fadeUp, sheetRise, drawX } from "./reveals";
+import { useCalm, fadeUp, sheetRise } from "./reveals";
 
 const RUNGS = [
   {
@@ -37,15 +37,18 @@ export default function LadderSection() {
   const calm = useCalm();
 
   return (
-    <section id="how" className="landing-cv landing-cv-ladder relative bg-night px-4 py-20 md:px-8 md:py-28" aria-label="How Clarify.AI stays until it lands">
-      <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
-          {/* The pitch, hanging in the dark while the proof glows beside it */}
+    <section id="how" className="landing-cv landing-cv-ladder bg-page px-5 py-16 text-ink md:px-8 md:py-24" aria-label="How Clarify.AI stays until it lands">
+      <div className="mx-auto max-w-6xl">
+        <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
+          {/* The pitch */}
           <div className="lg:sticky lg:top-16">
-            <h2 className="landing-balance font-serif text-[clamp(2.1rem,5vw,3.25rem)] italic leading-tight tracking-[-0.01em] text-chalk">
+            <motion.p {...fadeUp(calm)} className="kod-pill inline-block bg-chip text-ink">
+              the signature move
+            </motion.p>
+            <h2 className="kod-display landing-balance mt-4 text-[clamp(1.9rem,5vw,3rem)] leading-[1.08] text-ink">
               It stays until it lands.
             </h2>
-            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-chalk-dim md:text-base">
+            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-ink-dim md:text-base">
               Understanding rarely arrives on the first try, and Clarify.AI is
               built around that truth. Under every answer sits one small button:
             </p>
@@ -55,69 +58,65 @@ export default function LadderSection() {
             >
               <Sparkles size={14} /> Still fuzzy?
             </span>
-            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-chalk-dim md:text-base">
+            <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-ink-dim md:text-base">
               One tap. You never have to put your confusion into words. While
               building this page we tapped it on the Newton answer above. The
               live teacher slowed down, dropped the formula, and changed the
               analogy entirely. Unedited:
             </p>
+            <p className="kod-display mt-5 inline-block rounded-[2px] border-2 border-lime bg-lime-pale px-3 py-2 text-sm text-pill-ink">
+              Re-explains never cost a query.
+            </p>
           </div>
 
-          {/* The proof: the real re-explanation, a smaller lit sheet */}
+          {/* The proof */}
           <div className="flex flex-col gap-4">
             <motion.div {...sheetRise(calm)} className="flex flex-col items-end">
-              <div className="mb-1 text-[10px] text-chalk-dim">You, with one tap</div>
-              <div className="lit-sheet max-w-[92%] rounded-2xl rounded-tr-sm border border-editorial-line bg-editorial-stone p-4 text-sm text-editorial-charcoal md:max-w-[80%]">
+              <p className="kod-display mb-1.5 text-xs text-ink-dim">You, with one tap</p>
+              <div className="max-w-[92%] rounded-[2px] border-2 border-cobalt-bright bg-page p-4 text-sm leading-relaxed text-ink md:max-w-[80%]">
                 {REAL_STILL_FUZZY_PROMPT}
               </div>
             </motion.div>
             <motion.div {...sheetRise(calm)} className="flex flex-col items-start">
-              <div className="mb-1 text-[10px] text-chalk-dim">Clarify.AI &middot; unedited</div>
+              <p className="kod-display mb-1.5 text-xs text-ink-dim">Clarify.AI &middot; unedited</p>
               <div
                 tabIndex={0}
                 role="region"
                 aria-label="The real re-explanation from Clarify.AI, scrollable"
-                className="lit-sheet max-h-[460px] w-full min-w-0 overflow-y-auto rounded-2xl rounded-tl-sm bg-editorial-ivory p-4 text-sm leading-relaxed text-editorial-charcoal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-bright md:p-5"
+                className="lit-sheet max-h-[460px] w-full min-w-0 overflow-y-auto rounded-[2px] bg-editorial-ivory p-4 text-sm leading-relaxed text-editorial-charcoal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt-bright md:p-5"
               >
                 <Markdown>{REAL_REEXPLANATION}</Markdown>
               </div>
             </motion.div>
-            <p className="landing-pretty font-serif text-base italic leading-relaxed text-chalk-dim">
+            <p className="landing-pretty text-[14px] leading-relaxed text-ink-dim">
               The real reply ends with a question: &ldquo;Want to try the cricket
               ball question now...&rdquo; It will wait for your answer. It always waits.
             </p>
           </div>
         </div>
 
-        {/* The shape of what you just watched: five rungs, chalk on night */}
-        <div className="mt-20 md:mt-28">
-          <motion.p {...fadeUp(calm)} className="landing-balance max-w-2xl font-serif text-xl italic leading-snug text-chalk md:text-2xl">
-            What you just watched has a shape. The teacher climbs down five rungs,
-            as many as you need, and it never repeats itself, never sighs, never
-            moves on while you are lost.
-          </motion.p>
-
-          <ol className="mt-10 flex flex-col">
+        {/* The five rungs as numbered flat cards */}
+        <div className="mt-16 md:mt-24">
+          <motion.h3 {...fadeUp(calm)} className="kod-display landing-balance max-w-2xl text-xl leading-snug text-ink md:text-2xl">
+            What you just watched has a shape: five rungs, as many as you need.
+          </motion.h3>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {RUNGS.map((rung, i) => (
-              <li key={rung.title} style={{ marginLeft: `calc(${i} * min(1.8rem, 2.5vw))` }}>
-                <motion.div
-                  {...drawX(calm)}
-                  className="h-px origin-left bg-night-line"
-                />
-                <motion.div {...fadeUp(calm, calm ? 0 : i * 0.06)} className="flex items-baseline gap-5 py-5 md:gap-7 md:py-6">
-                  <span className="font-serif text-[clamp(2.2rem,4vw,3.2rem)] italic leading-none text-chalk/45">
-                    {i + 1}
-                  </span>
-                  <div>
-                    <h3 className="font-serif text-lg italic text-chalk md:text-xl">{rung.title}</h3>
-                    <p className="landing-pretty mt-1.5 max-w-xl text-sm leading-relaxed text-chalk-dim md:text-[15px]">
-                      {rung.body}
-                    </p>
-                  </div>
-                </motion.div>
-              </li>
+              <motion.div
+                key={rung.title}
+                {...fadeUp(calm, calm ? 0 : i * 0.06)}
+                className="kod-card p-5"
+              >
+                <p className="kod-display text-3xl leading-none text-cobalt-bright">{i + 1}</p>
+                <h4 className="kod-display mt-3 text-[15px] leading-snug text-ink">{rung.title}</h4>
+                <p className="landing-pretty mt-2 text-sm leading-relaxed text-ink-dim">{rung.body}</p>
+              </motion.div>
             ))}
-          </ol>
+          </div>
+          <motion.p {...fadeUp(calm)} className="landing-pretty mt-6 max-w-2xl text-[15px] leading-relaxed text-ink-dim">
+            It never repeats itself, never sighs, never moves on while you are
+            lost. The fifth &ldquo;still fuzzy&rdquo; is received exactly like the first.
+          </motion.p>
         </div>
       </div>
     </section>
