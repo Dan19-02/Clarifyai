@@ -436,7 +436,10 @@ export default function App() {
   // opts.deep: ask for the full study view (exam-ready answer + notebook).
   // opts.silent: don't add a user bubble (the Deep understanding button
   // re-asks a question that is already on screen).
-  const handleSendMessage = async (textToSend?: string, opts?: { deep?: boolean; silent?: boolean }) => {
+  const handleSendMessage = async (
+    textToSend?: string,
+    opts?: { deep?: boolean; silent?: boolean; convId?: string; freshChat?: boolean }
+  ) => {
     const text = (textToSend ?? inputText).trim();
     const atts = opts?.silent ? [] : attachments;
     // sendingRef guards synchronously: React state (isGenerating) settles a
@@ -446,7 +449,7 @@ export default function App() {
     sendingRef.current = true;
     // No open conversation (the list failed to load, or was emptied): create
     // one on the spot instead of silently swallowing the student's question.
-    let convId = activeId;
+    let convId = opts?.convId ?? activeId;
     if (!convId) {
       try {
         const { conversation } = await api.createConversation();
@@ -460,7 +463,9 @@ export default function App() {
         return;
       }
     }
-    const isFirstMessage = chatHistory.length === 0;
+    // freshChat: the caller just opened a brand-new conversation this same
+    // tick, so the chatHistory closure may still show the previous thread.
+    const isFirstMessage = opts?.freshChat === true || chatHistory.length === 0;
     const deep = opts?.deep === true;
 
     // A new question (first in a thread, not a deep dive) is what costs a credit.
@@ -718,6 +723,35 @@ export default function App() {
   };
 
   // ---- Chapters ----
+  // A chapter-mastery study session ALWAYS opens in its own fresh chat: the
+  // deep notebook is a self-contained lesson and must never land mid-thread
+  // inside whatever doubt happens to be open. Reuses an empty "New chat" row
+  // if one exists, otherwise creates one, then sends the study request into
+  // exactly that conversation.
+  const startChapterStudy = async (chapterName: string) => {
+    if (isGenerating || sendingRef.current) return;
+    let convId: string;
+    const existingEmpty = conversations.find((c) => (c.messageCount ?? 0) === 0);
+    if (existingEmpty) {
+      convId = existingEmpty.id;
+      setActiveId(existingEmpty.id);
+      setChatHistory([]);
+    } else {
+      try {
+        const { conversation } = await api.createConversation();
+        setConversations((prev) => [conversation, ...prev.filter((c) => c.id !== conversation.id)]);
+        setActiveId(conversation.id);
+        setChatHistory([]);
+        convId = conversation.id;
+      } catch {
+        showToast("Could not open a fresh chat for this chapter. Check your internet and try again. 🌱");
+        return;
+      }
+    }
+    setMobileView("chat");
+    await handleSendMessage(`Teach me "${chapterName}" in depth.`, { deep: true, convId, freshChat: true });
+  };
+
   const handleAddChapter = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newChapterName.trim()) return;
@@ -731,7 +765,7 @@ export default function App() {
     setChapters((prev) => [newCh, ...prev]);
     setNewChapterName("");
     setIsAddingChapter(false);
-    handleSendMessage(`Teach me "${newCh.name}" in depth.`, { deep: true });
+    startChapterStudy(newCh.name);
   };
 
   const handleUpdateMastery = (id: string, newMastery: "weak" | "developing" | "strong") => {
@@ -1156,7 +1190,7 @@ export default function App() {
                   {chapters.map((ch) => (
                     <div
                       key={ch.id}
-                      onClick={() => handleSendMessage(`Teach me "${ch.name}" in depth.`, { deep: true })}
+                      onClick={() => startChapterStudy(ch.name)}
                       className="group bg-editorial-stone border border-editorial-line-light p-3 rounded-xl flex flex-col gap-2 hover:border-editorial-sage/40 hover:bg-editorial-sage/[0.05] transition-all cursor-pointer relative"
                     >
                       <div className="flex justify-between items-start gap-1">
