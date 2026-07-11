@@ -253,6 +253,13 @@ export const api = {
       body: JSON.stringify(body),
     }),
   tts: (body: { text: string; voice: string }) => request<{ audio: string }>("/tts", { method: "POST", body: JSON.stringify(body) }),
+  /** The Landing Signal read: an honest per-concept understanding view. */
+  getComprehension: () =>
+    request<{
+      enabled: boolean;
+      concepts: { key: string; label: string; chapter: string | null; state: "landed" | "practiced" | "working_on_it"; struggles: number; passes: number; lastSeen: string }[];
+      summary: { landed: number; practiced: number; working: number };
+    }>("/comprehension"),
 };
 
 // DEV-ONLY: `?preview=1` renders the signed-in workspace with seeded data and

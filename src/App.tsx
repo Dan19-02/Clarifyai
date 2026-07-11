@@ -48,6 +48,7 @@ import { DEFAULT_CHAPTERS, makeDefaultProfile, SUPPORT_EMAIL } from "./defaults"
 import { Markdown } from "./Markdown";
 import { NotebookViewer } from "./NotebookViewer";
 import UpgradeModal from "./UpgradeModal";
+import { UnderstandingPanel } from "./UnderstandingPanel";
 import PreExamNotebook from "./PreExamNotebook";
 
 // The public landing site is only for signed-out visitors, so it loads as its
@@ -155,6 +156,8 @@ export default function App() {
   const sendingRef = useRef(false);
   const [mobileView, setMobileView] = useState<MobileView>("chat");
   const [showChapters, setShowChapters] = useState(false);
+  // Bumped after each answer so the "What's landing" read refreshes.
+  const [understandingKey, setUnderstandingKey] = useState(0);
 
   // Add chapter
   const [newChapterName, setNewChapterName] = useState("");
@@ -567,7 +570,9 @@ export default function App() {
         preferredAnalogy: profile.preferredAnalogy,
         recentTopics,
         deep,
-        images
+        images,
+        // Lets the backend key the Landing Signal's posed-check state per chat.
+        conversationId: convId
       };
 
       // The answer always persists to its own conversation, but only paints
@@ -674,6 +679,9 @@ export default function App() {
     } finally {
       sendingRef.current = false;
       setIsGenerating(false);
+      // Let the understanding read pick up any verdict this turn produced
+      // (recorded server-side just after the answer).
+      setUnderstandingKey((k) => k + 1);
     }
   };
 
@@ -1146,6 +1154,8 @@ export default function App() {
               ))}
             </div>
           </div>
+
+          <UnderstandingPanel refreshKey={understandingKey} />
 
           {/* Chapter mastery, collapsible, secondary */}
           <div className="flex flex-col gap-2 border-t border-editorial-line pt-3 mt-auto">
