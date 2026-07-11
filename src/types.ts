@@ -34,6 +34,9 @@ export interface ChatMessage {
   /** A gentle, self-blaming failure notice (client only): rendered on a faint
    *  stone ground, distinct from a real white answer, with no warning color. */
   isError?: boolean;
+  /** For a deep-dive notebook: the id of the answer whose "Go deeper" button
+   *  produced it. Persisted, so the button stays one-shot across reloads. */
+  deepFor?: string;
 }
 
 /** A separate chat window / study session. */

@@ -222,7 +222,7 @@ export const api = {
     request<{ messages: ChatMessage[] }>(`/conversations/${conversationId}/messages`),
   addMessage: (
     conversationId: string,
-    msg: { id: string; role: string; text: string; mode?: string; sources?: any[]; attachments?: any[] }
+    msg: { id: string; role: string; text: string; mode?: string; sources?: any[]; attachments?: any[]; deepFor?: string }
   ) => request(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(msg) }),
   /** Unwind an optimistically saved question that the paywall blocked. */
   deleteMessage: (conversationId: string, messageId: string) =>
@@ -253,13 +253,23 @@ export const api = {
       body: JSON.stringify(body),
     }),
   tts: (body: { text: string; voice: string }) => request<{ audio: string }>("/tts", { method: "POST", body: JSON.stringify(body) }),
-  /** The Landing Signal read: an honest per-concept understanding view. */
+  /** The Landing Signal read: an honest per-concept understanding view.
+   *  ready = practiced concepts whose confirm-check today would promote them
+   *  to landed (their one pass was on an earlier day). Max 3. */
   getComprehension: () =>
     request<{
       enabled: boolean;
       concepts: { key: string; label: string; chapter: string | null; state: "landed" | "practiced" | "working_on_it"; struggles: number; passes: number; lastSeen: string }[];
       summary: { landed: number; practiced: number; working: number };
+      ready: { key: string; label: string; chapter: string | null }[];
     }>("/comprehension"),
+  /** Ready to Land: the server poses one fresh transfer check for a practiced
+   *  concept and remembers it on the conversation, so the student's next chat
+   *  message is graded by the skeptical examiner. Free (never metered). */
+  confirmCheck: (body: { conversationId: string; conceptKey: string; grade: string; board: string; language: string }) =>
+    request<{ question: string; label: string }>("/comprehension/confirm", { method: "POST", body: JSON.stringify(body) }),
+  /** Lifetime study stats: diya days (only ever grows) + doubts cleared. */
+  getMeStats: () => request<{ daysActive: number; activeToday: boolean; doubtsCleared: number }>("/me/stats"),
 };
 
 // DEV-ONLY: `?preview=1` renders the signed-in workspace with seeded data and

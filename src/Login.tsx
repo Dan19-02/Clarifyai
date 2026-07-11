@@ -99,6 +99,7 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
         <button
           ref={backRef}
           onClick={onBack}
+          title="Back to the home page"
           className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full border border-editorial-line bg-surface px-3.5 py-2 text-xs text-editorial-charcoal/70 transition-colors hover:bg-editorial-stone focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-editorial-sage md:left-6 md:top-6"
         >
           <ArrowLeft size={13} />
@@ -123,6 +124,7 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
               <button
                 key={m}
                 aria-pressed={mode === m}
+                title={m === "login" ? "Sign in to your existing account" : "Create a new account"}
                 onClick={() => {
                   setMode(m);
                   setError(null);
@@ -230,6 +232,7 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
                       <button
                         type="button"
                         key={n}
+                        title={`Confidence ${n} of 5`}
                         onClick={() => setConfidenceLevel(n)}
                         className={`flex-1 rounded-full py-2 text-xs font-bold transition-colors ${
                           confidenceLevel >= n ? "bg-editorial-sage text-white" : "bg-editorial-stone text-editorial-charcoal/50"

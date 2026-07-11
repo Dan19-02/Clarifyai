@@ -13,6 +13,23 @@ interface NotebookViewerProps {
   sections: NotebookSection[];
 }
 
+/** One-line hover hints per notebook section. Keyed on a normalized name so
+ *  minor wording drift in the model's headers still matches; unknown sections
+ *  fall back to a generic line. */
+const SECTION_HINTS: [RegExp, string][] = [
+  [/big idea/i, "The one core idea everything else builds on"],
+  [/analogy/i, "The concept in a picture from everyday life"],
+  [/simple explanation/i, "The plain, step-by-step walkthrough"],
+  [/visual/i, "A diagram of how it all fits together"],
+  [/formal definition/i, "The exact wording exams expect"],
+  [/worked example/i, "One problem solved step by step"],
+  [/common mistakes/i, "The slips that cost marks, and how to avoid them"],
+  [/quick check/i, "One small question to test yourself"],
+  [/summary/i, "The whole idea in one line to remember"],
+];
+const sectionHint = (title: string): string =>
+  SECTION_HINTS.find(([re]) => re.test(title))?.[1] || "Open this part of the notebook";
+
 export function NotebookViewer({ sections }: NotebookViewerProps) {
   const [activeTabIdx, setActiveTabIdx] = useState(0);
 
@@ -32,6 +49,7 @@ export function NotebookViewer({ sections }: NotebookViewerProps) {
             <button
               key={idx}
               aria-pressed={activeTabIdx === idx}
+              title={sectionHint(sec.title)}
               onClick={() => setActiveTabIdx(idx)}
               className={`flex items-center gap-2 px-3 py-2 rounded-full text-left text-xs font-medium transition-all shrink-0 md:w-full border cursor-pointer ${
                 activeTabIdx === idx ? "bg-editorial-sage text-white border-editorial-sage" : "bg-transparent text-editorial-charcoal/70 hover:text-editorial-charcoal hover:bg-editorial-stone/50 border-editorial-line-light"
@@ -65,8 +83,8 @@ export function NotebookViewer({ sections }: NotebookViewerProps) {
               <div className="mt-5 pt-3 border-t border-editorial-line-light flex items-center justify-between text-[10px] text-editorial-charcoal/65">
                 <span>Part {activeTabIdx + 1} of {sections.length}</span>
                 <div className="flex gap-1.5">
-                  <button disabled={activeTabIdx === 0} onClick={() => setActiveTabIdx((p) => p - 1)} className="px-3 py-1 rounded-full bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-charcoal hover:text-editorial-sage border border-editorial-line-light text-[11px] disabled:opacity-30 cursor-pointer transition-colors">Prev</button>
-                  <button disabled={activeTabIdx === sections.length - 1} onClick={() => setActiveTabIdx((p) => p + 1)} className="px-3 py-1 rounded-full bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-charcoal hover:text-editorial-sage border border-editorial-line-light text-[11px] disabled:opacity-30 cursor-pointer transition-colors">Next</button>
+                  <button disabled={activeTabIdx === 0} title="Previous notebook part" onClick={() => setActiveTabIdx((p) => p - 1)} className="px-3 py-1 rounded-full bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-charcoal hover:text-editorial-sage border border-editorial-line-light text-[11px] disabled:opacity-30 cursor-pointer transition-colors">Prev</button>
+                  <button disabled={activeTabIdx === sections.length - 1} title="Next notebook part" onClick={() => setActiveTabIdx((p) => p + 1)} className="px-3 py-1 rounded-full bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-charcoal hover:text-editorial-sage border border-editorial-line-light text-[11px] disabled:opacity-30 cursor-pointer transition-colors">Next</button>
                 </div>
               </div>
             </motion.div>

@@ -8,7 +8,7 @@
  * with a calm path to the plans. Nothing is ever deleted while locked.
  */
 import { useEffect, useRef, useState } from "react";
-import { X, BookMarked, ChevronRight, ArrowLeft, Trash2, Loader2, Sparkles, Lock, RefreshCw } from "lucide-react";
+import { X, BookMarked, ChevronRight, ArrowLeft, Trash2, Loader2, Sparkles, Lock, RefreshCw, Printer } from "lucide-react";
 import { api } from "./api";
 import type { NotebookSummary, NotebookEntry, ClarifyNote, Subscription } from "./types";
 import { Markdown } from "./Markdown";
@@ -117,6 +117,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
           <button
             onClick={back}
             aria-label="Back"
+            title="Go back one level"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-editorial-line text-editorial-charcoal/60 transition-colors hover:bg-editorial-stone cursor-pointer"
           >
             <ArrowLeft size={15} />
@@ -179,6 +180,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
               </p>
               <button
                 onClick={onUpgrade}
+                title="See the plans that open your notebook"
                 className="rounded-full bg-editorial-charcoal px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 cursor-pointer"
                 id="btn-notebook-upgrade"
               >
@@ -204,6 +206,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                   {summary.subjects!.map((s) => (
                     <button
                       key={s.subject}
+                      title={`Open your saved ${s.subject} points`}
                       onClick={() => setLevel({ view: "chapters", subject: s.subject })}
                       className="flex items-center justify-between gap-3 rounded-2xl border border-editorial-line bg-surface p-5 text-left transition-all hover:border-editorial-sage/40 cursor-pointer"
                     >
@@ -227,6 +230,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
               {(summary.subjects?.find((s) => s.subject === level.subject)?.chapters || []).map((c) => (
                 <button
                   key={c.chapter}
+                  title={`Open the points you saved in ${c.chapter}`}
                   onClick={() => openChapter(level.subject, c.chapter)}
                   className="flex items-center justify-between gap-3 rounded-2xl border border-editorial-line bg-surface px-5 py-4 text-left transition-all hover:border-editorial-sage/40 cursor-pointer"
                 >
@@ -283,11 +287,29 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                 )}
                 {note && !notesBusy && (
                   <div className="mt-4 border-t border-editorial-line-light pt-4 text-sm leading-relaxed text-editorial-charcoal">
-                    <Markdown>{note.text}</Markdown>
-                    <p className="mt-3 text-[10px] text-editorial-charcoal/60">
-                      Prepared {new Date(note.generatedAt).toLocaleString()}
-                      {note.stale ? " · you have saved new points since, refresh when ready" : ""}
-                    </p>
+                    {/* parchi-print: @media print shows ONLY this block, so
+                        printing gives one clean parchi, the night-before-exam
+                        sheet students fold into a pocket. */}
+                    <div className="parchi-print">
+                      <p className="hidden print:block mb-2 text-xs font-semibold">
+                        {level.view === "points" ? `${level.subject} · ${level.chapter} · ` : ""}Clarify.AI parchi
+                      </p>
+                      <Markdown>{note.text}</Markdown>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="text-[10px] text-editorial-charcoal/60">
+                        Prepared {new Date(note.generatedAt).toLocaleString()}
+                        {note.stale ? " · you have saved new points since, refresh when ready" : ""}
+                      </p>
+                      <button
+                        onClick={() => window.print()}
+                        className="flex shrink-0 items-center gap-1.5 rounded-full border border-editorial-line px-3 py-1.5 text-[11px] text-editorial-charcoal/80 hover:bg-editorial-stone transition-colors cursor-pointer"
+                        id="btn-print-parchi"
+                        title="Print this revision sheet as one clean parchi"
+                      >
+                        <Printer size={12} /> Print parchi
+                      </button>
+                    </div>
                   </div>
                 )}
                 {!note && !notesBusy && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from "react";
 import {
   Sparkles,
   BookOpen,
@@ -23,7 +23,9 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
-  BookMarked
+  BookMarked,
+  Flame,
+  Star
 } from "lucide-react";
 import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import { ThemeToggle } from "./ThemeToggle";
@@ -48,8 +50,29 @@ import { DEFAULT_CHAPTERS, makeDefaultProfile, SUPPORT_EMAIL } from "./defaults"
 import { Markdown } from "./Markdown";
 import { NotebookViewer } from "./NotebookViewer";
 import UpgradeModal from "./UpgradeModal";
-import { UnderstandingPanel } from "./UnderstandingPanel";
+import { UnderstandingPanel, type CompConcept, type CompSummary } from "./UnderstandingPanel";
 import PreExamNotebook from "./PreExamNotebook";
+import { CelebrationOverlay } from "./CelebrationOverlay";
+import { ReadyToLandCard, type ReadyConcept } from "./ReadyToLand";
+import { TrialArc } from "./TrialArc";
+import {
+  type Celebration,
+  canFire,
+  markFired,
+  claimOnce,
+  DOUBT_MILESTONES,
+  SAVE_MILESTONES,
+  PARCHI_THRESHOLDS,
+  practicedCopy,
+  landedCopy,
+  firstStarCopy,
+  doubtsMilestoneCopy,
+  savesMilestoneCopy,
+  parchiCopy,
+  savedToast,
+  diyaGreeting,
+  diyaTitle
+} from "./celebrations";
 
 // The public landing site is only for signed-out visitors, so it loads as its
 // own chunk and never weighs down a student's session.
@@ -154,10 +177,274 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   // Synchronous companion to isGenerating (see handleSendMessage).
   const sendingRef = useRef(false);
+  // "Go deeper" is one-shot per answer. Maps a source answer's id to the
+  // notebook it already generated, so a repeat tap jumps to that notebook
+  // instead of re-asking: deep answers are cache-served, so re-asking just
+  // stacks a byte-identical notebook. Derived from the messages themselves
+  // (each notebook persists a deepFor pointer to its source answer), so the
+  // link survives reloads and conversation switches.
+  const deepDiveOf = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of chatHistory) if (m.deepFor) map[m.deepFor] = m.id;
+    return map;
+  }, [chatHistory]);
   const [mobileView, setMobileView] = useState<MobileView>("chat");
   const [showChapters, setShowChapters] = useState(false);
   // Bumped after each answer so the "What's landing" read refreshes.
   const [understandingKey, setUnderstandingKey] = useState(0);
+
+  // ---- The honest dopamine layer -------------------------------------------
+  // All celebration/dedupe storage is scoped per account so two siblings on
+  // one phone never see each other's moments claimed.
+  const scope = `cfy:${account?.id ?? "anon"}`;
+
+  // The Landing Signal read now lives here (not in the panel): the workspace
+  // needs it to diff state transitions for PAKKA moments, feed the sidebar
+  // panel, and drive the Ready-to-Land queue, wherever the panel is hidden.
+  const [comp, setComp] = useState<{ enabled: boolean; concepts: CompConcept[]; summary: CompSummary; ready: ReadyConcept[] }>({
+    enabled: true,
+    concepts: [],
+    summary: { landed: 0, practiced: 0, working: 0 },
+    ready: []
+  });
+  // Previous per-concept states; null until the first read (the baseline never
+  // celebrates: a transition that happened while away is not a fresh win).
+  const compPrevRef = useRef<Map<string, string> | null>(null);
+  const [celebration, setCelebration] = useState<Celebration | null>(null);
+  const celebrationQueue = useRef<Celebration[]>([]);
+  // Mirrors `celebration` synchronously so pushCelebration can decide show-vs-
+  // queue WITHOUT mutating state inside a setState updater (StrictMode double-
+  // invokes updaters, which would double-enqueue).
+  const celebrationActiveRef = useRef(false);
+  const [glowKeys, setGlowKeys] = useState<string[]>([]);
+
+  // Lifetime stats: diya days (only ever grows) + doubts cleared. null until
+  // loaded; when the load failed we show nothing rather than a made-up count.
+  const [stats, setStats] = useState<{ daysActive: number; activeToday: boolean; doubtsCleared: number } | null>(null);
+
+  // Pre-exam notebook accumulation: running total + per-chapter counts for
+  // the parchi milestones (null until known / while the shelf is locked).
+  const [savedCount, setSavedCount] = useState<number | null>(null);
+  const chapterCountsRef = useRef<Map<string, number> | null>(null);
+
+  // Ready to Land: shown only on a fresh open, dismissible for the IST day.
+  const [sentThisSession, setSentThisSession] = useState(false);
+  const [rtlState, setRtlState] = useState<"idle" | "loading" | "posed">("idle");
+  const [rtlDismissed, setRtlDismissed] = useState(true); // true until storage is read
+  const [checkNudgeDismissed, setCheckNudgeDismissed] = useState(false);
+
+  const istDayClient = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+
+  const pushCelebration = (c: Celebration) => {
+    markFired(c.tone);
+    // No side effects inside the setState updater: decide here, synchronously.
+    if (celebrationActiveRef.current) {
+      celebrationQueue.current.push(c);
+      return;
+    }
+    celebrationActiveRef.current = true;
+    setCelebration(c);
+  };
+
+  const advanceCelebration = () => {
+    const next = celebrationQueue.current.shift() ?? null;
+    celebrationActiveRef.current = next !== null;
+    setCelebration(next);
+  };
+
+  // Live refs so the comprehension diff (a stable callback) reads current
+  // profile/subscription/stats without re-subscribing effects.
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const subscriptionRef = useRef(subscription);
+  subscriptionRef.current = subscription;
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
+  // Which account is signed in RIGHT NOW. Async reads (comprehension, stats,
+  // notebook) capture this at call time and bail if it changed before they
+  // resolve, so account A's data can never celebrate or count into account B.
+  const accountIdRef = useRef(account?.id);
+  accountIdRef.current = account?.id;
+
+  /** Fetch the comprehension read and celebrate any fresh, examiner-verified
+   *  promotion (working -> practiced/landed, practiced -> landed). */
+  const loadComprehension = React.useCallback(async () => {
+    const myAcct = accountIdRef.current;
+    try {
+      const raw = await api.getComprehension();
+      // Account switched mid-flight: drop this response entirely.
+      if (accountIdRef.current !== myAcct) return;
+      // Defensive against a frontend-first deploy hitting an older backend that
+      // has no `ready` field yet: never let the card map over undefined.
+      const data = {
+        enabled: raw?.enabled ?? false,
+        concepts: raw?.concepts ?? [],
+        summary: raw?.summary ?? { landed: 0, practiced: 0, working: 0 },
+        ready: raw?.ready ?? []
+      };
+      setComp(data);
+      const prev = compPrevRef.current;
+      const order: Record<string, number> = { working_on_it: 0, practiced: 1, landed: 2 };
+      if (prev) {
+        // Their trial's very first PAKKA is the First Star.
+        const hadWinBefore = [...prev.values()].some((s) => s === "practiced" || s === "landed");
+        for (const c of data.concepts) {
+          const before = prev.get(c.key) ?? "working_on_it";
+          if (order[c.state] <= order[before]) continue;
+          if (c.state !== "practiced" && c.state !== "landed") continue;
+          // Check the session cap BEFORE claiming: claimOnce is permanent, so
+          // claiming a celebration we then suppress would burn it forever and
+          // it could never fire in a later session.
+          if (!canFire(c.state)) continue;
+          if (!claimOnce(`${scope}:pakka:${c.key}:${c.state}`)) continue;
+          const lang = profileRef.current.language;
+          const isTrial = subscriptionRef.current?.plan === "trial";
+          const copy =
+            c.state === "landed"
+              ? landedCopy(lang, c.label)
+              : !hadWinBefore && isTrial && claimOnce(`${scope}:first-star`)
+              ? firstStarCopy(lang, c.label)
+              : practicedCopy(lang, c.label);
+          pushCelebration({ tone: c.state === "landed" ? "landed" : "practiced", ...copy, conceptKey: c.key });
+          // Glow this chip briefly, then clear the marker so it does not read as
+          // a "fresh win" on later renders.
+          setGlowKeys((k) => (k.includes(c.key) ? k : [...k, c.key]));
+          const key = c.key;
+          setTimeout(() => setGlowKeys((k) => k.filter((x) => x !== key)), 2000);
+        }
+      }
+      compPrevRef.current = new Map(data.concepts.map((c) => [c.key, c.state]));
+    } catch {
+      // A progress read must never disrupt studying: fail silent.
+    }
+  }, [scope]);
+
+  // Refresh the read after every answer (the server records the verdict just
+  // AFTER responding, so refetch once more shortly after).
+  useEffect(() => {
+    if (!account || dataLoading) return;
+    loadComprehension();
+    const t = setTimeout(loadComprehension, 3500);
+    return () => clearTimeout(t);
+  }, [account?.id, dataLoading, understandingKey, loadComprehension]);
+
+  // Lifetime stats + notebook totals, once per sign-in; and read today's
+  // Ready-to-Land dismissal from storage.
+  useEffect(() => {
+    if (!account) return;
+    const myAcct = account.id;
+    // A fresh sign-in starts from a clean slate: no baseline, counters, pending
+    // celebrations, glow, or session flags may carry across accounts (two
+    // siblings sharing one phone must never see each other's wins or streak).
+    compPrevRef.current = null;
+    chapterCountsRef.current = null;
+    celebrationQueue.current = [];
+    celebrationActiveRef.current = false;
+    setComp({ enabled: true, concepts: [], summary: { landed: 0, practiced: 0, working: 0 }, ready: [] });
+    setCelebration(null);
+    setGlowKeys([]);
+    setStats(null);
+    setSavedCount(null);
+    setSentThisSession(false);
+    setRtlState("idle");
+    setCheckNudgeDismissed(false);
+    api.getMeStats().then((s) => { if (accountIdRef.current === myAcct) setStats(s); }).catch(() => {});
+    api
+      .getNotebook()
+      .then((s) => {
+        if (accountIdRef.current !== myAcct) return;
+        setSavedCount(s.savedCount);
+        chapterCountsRef.current = s.subjects
+          ? new Map(s.subjects.flatMap((sub) => sub.chapters.map((ch) => [`${sub.subject}|${ch.chapter}`, ch.count] as [string, number])))
+          : null;
+      })
+      .catch(() => {});
+    try {
+      setRtlDismissed(localStorage.getItem(`${scope}:rtl-dismiss`) === istDayClient());
+    } catch {
+      setRtlDismissed(false);
+    }
+  }, [account?.id]);
+
+  /** After a successful answer: light the diya on the day's first ask, count
+   *  the doubt, and fire any milestone that number just crossed. */
+  const onAnswered = (text: string, opts?: { silent?: boolean }) => {
+    // A silent send (a "Go deeper" dive) persists NO user message, so the
+    // server's day/doubt counts never see it. Counting it optimistically here
+    // would light the diya and bump daysActive, then visibly shrink on the next
+    // reload, breaking the "it never subtracts" promise. So silent sends are
+    // inert for the streak and the doubt counter alike.
+    if (opts?.silent) return;
+    const s = statsRef.current;
+    if (!s) return; // stats unknown: show nothing rather than invent numbers
+    const lang = profileRef.current.language;
+    let next = s;
+    if (!s.activeToday) {
+      next = { ...next, activeToday: true, daysActive: s.daysActive + 1 };
+      showToast(diyaGreeting(lang, next.daysActive));
+    }
+    // The "Still fuzzy?" sentinel is a retry signal, not a fresh doubt (the
+    // server excludes it too), so it lights the diya but never counts a doubt.
+    const isRealAsk = Boolean(text.trim()) && text !== STILL_CONFUSED_PROMPT;
+    if (isRealAsk) {
+      next = { ...next, doubtsCleared: next.doubtsCleared + 1 };
+      const n = next.doubtsCleared;
+      if (DOUBT_MILESTONES.includes(n) && canFire("milestone") && claimOnce(`${scope}:milestone-doubts:${n}`)) {
+        pushCelebration({ tone: "milestone", ...doubtsMilestoneCopy(lang, n) });
+      }
+    }
+    if (next !== s) setStats(next);
+  };
+
+  // ---- Ready to Land handlers ----------------------------------------------
+  const handleReadyDismiss = () => {
+    try {
+      localStorage.setItem(`${scope}:rtl-dismiss`, istDayClient());
+    } catch {
+      /* ignore */
+    }
+    setRtlDismissed(true);
+  };
+
+  const handleReadyConfirm = async (c: ReadyConcept) => {
+    if (rtlState === "loading") return;
+    setRtlState("loading");
+    try {
+      // Ensure a conversation exists to carry the check (mirrors handleSendMessage).
+      let convId = activeId;
+      if (!convId) {
+        const { conversation } = await api.createConversation();
+        setConversations((prev) => [conversation, ...prev.filter((cv) => cv.id !== conversation.id)]);
+        setActiveId(conversation.id);
+        setChatHistory([]);
+        convId = conversation.id;
+      }
+      const { question } = await api.confirmCheck({
+        conversationId: convId,
+        conceptKey: c.key,
+        grade: profile.grade,
+        board: profile.board,
+        language: profile.language
+      });
+      const msg: ChatMessage = {
+        id: `model-confirm-${Date.now()}`,
+        role: "model",
+        text: question,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      // convId is the active conversation by construction (either it already
+      // was, or we just created and activated it), so the bubble goes straight
+      // into the on-screen thread.
+      setChatHistory((prev) => [...prev, msg]);
+      api.addMessage(convId, msg).catch(() => {});
+      bumpConversation(convId);
+      setRtlState("posed");
+      document.getElementById("input-chat")?.focus();
+    } catch (e: any) {
+      setRtlState("idle");
+      showToast(e?.message || "Could not prepare a check just now. Please try again in a moment. 🌱");
+    }
+  };
 
   // Add chapter
   const [newChapterName, setNewChapterName] = useState("");
@@ -252,11 +539,90 @@ export default function App() {
         messageId: msg.id,
         conversationId: activeId || undefined
       });
-      showToast("Saved to your Pre-exam notebook. It files itself under the right chapter.");
+      // Accumulation you can feel: the +1 flies into the notebook, the count
+      // ticks, and every save states the payoff (all in one place on exam day).
+      // Only claim a running total when the true count is known: showing "1
+      // point saved" to a student who already has 30 (summary not yet loaded)
+      // would be wrong, so fall back to a count-free line and skip milestones
+      // until the authoritative refetch below settles the real total.
+      flyToNotebook(document.getElementById("btn-save-selection") || document.getElementById(`btn-savelines-${msg.id}`));
+      if (savedCount !== null) {
+        const n = savedCount + 1;
+        setSavedCount(n);
+        showToast(savedToast(profile.language, n));
+        if (SAVE_MILESTONES.includes(n) && canFire("milestone") && claimOnce(`${scope}:milestone-saves:${n}`)) {
+          pushCelebration({ tone: "milestone", ...savesMilestoneCopy(profile.language, n) });
+        }
+      } else {
+        showToast("Saved to your Pre-exam notebook. It files itself under the right chapter.");
+      }
+      // The AI files the point under its chapter asynchronously: refresh the
+      // shelf shortly after and fire any parchi threshold a chapter crossed.
+      const savedForAcct = accountIdRef.current;
+      setTimeout(async () => {
+        try {
+          const s = await api.getNotebook();
+          if (accountIdRef.current !== savedForAcct) return; // signed out/in meanwhile
+          setSavedCount(s.savedCount);
+          const next = s.subjects
+            ? new Map(s.subjects.flatMap((sub) => sub.chapters.map((ch) => [`${sub.subject}|${ch.chapter}`, ch.count] as [string, number])))
+            : null;
+          const prevCounts = chapterCountsRef.current;
+          if (next && prevCounts) {
+            for (const [key, cnt] of next) {
+              const before = prevCounts.get(key) ?? 0;
+              for (const t of PARCHI_THRESHOLDS) {
+                if (before < t && cnt >= t && canFire("parchi") && claimOnce(`${scope}:parchi:${key}:${t}`)) {
+                  const [subj, chap] = key.split("|");
+                  pushCelebration({ tone: "parchi", ...parchiCopy(profile.language, subj, chap, t) });
+                }
+              }
+            }
+          }
+          if (next) chapterCountsRef.current = next;
+        } catch {
+          /* the shelf read is a bonus, never an error surface */
+        }
+      }, 6000);
     } catch (e: any) {
       showToast(e?.message || "Could not save that. Please select the lines again and retry.");
     } finally {
       setSavingSelection(false);
+    }
+  };
+
+  /** The saved line flies as a "+1" pill from the save button into the
+   *  notebook icon, which bounces once. Pure DOM + CSS; skipped entirely
+   *  under reduced motion or when either end is not on screen. */
+  const flyToNotebook = (fromEl: HTMLElement | null) => {
+    try {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      // Desktop header icon when visible, else the mobile nav's Notebook tab.
+      const target =
+        (document.getElementById("btn-notebook")?.offsetParent ? document.getElementById("btn-notebook") : null) ||
+        document.getElementById("tab-notebook");
+      const from = fromEl?.getBoundingClientRect();
+      const to = target?.getBoundingClientRect();
+      if (!from || !to || !target) return;
+      const el = document.createElement("div");
+      el.className = "cfy-fly";
+      el.textContent = "+1";
+      el.style.left = `${from.left + from.width / 2}px`;
+      el.style.top = `${from.top}px`;
+      document.body.appendChild(el);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          el.style.transform = `translate(${to.left + to.width / 2 - (from.left + from.width / 2)}px, ${to.top + to.height / 2 - from.top}px) scale(0.4)`;
+          el.style.opacity = "0";
+        })
+      );
+      setTimeout(() => {
+        el.remove();
+        target.classList.add("cfy-bounce");
+        setTimeout(() => target.classList.remove("cfy-bounce"), 700);
+      }, 820);
+    } catch {
+      /* decoration only: never let it break a save */
     }
   };
 
@@ -441,7 +807,7 @@ export default function App() {
   // re-asks a question that is already on screen).
   const handleSendMessage = async (
     textToSend?: string,
-    opts?: { deep?: boolean; silent?: boolean; convId?: string; freshChat?: boolean }
+    opts?: { deep?: boolean; silent?: boolean; convId?: string; freshChat?: boolean; deepSourceId?: string }
   ) => {
     const text = (textToSend ?? inputText).trim();
     const atts = opts?.silent ? [] : attachments;
@@ -450,6 +816,11 @@ export default function App() {
     // credits before the button ever disabled.
     if ((!text && atts.length === 0) || isGenerating || sendingRef.current) return;
     sendingRef.current = true;
+    // The student engaged with a question: the Ready-to-Land card belongs to
+    // the fresh open only, so it steps aside for the rest of this session.
+    setSentThisSession(true);
+    // Set inside finalize (success only): drives the diya + doubt counters.
+    let answeredOk = false;
     // No open conversation (the list failed to load, or was emptied): create
     // one on the spot instead of silently swallowing the student's question.
     let convId = opts?.convId ?? activeId;
@@ -475,6 +846,10 @@ export default function App() {
     // Follow-ups, "still fuzzy" re-explains, and deep dives are always free.
     const isNewQuestion = isFirstMessage && !deep && (Boolean(text) || atts.length > 0);
     if (isNewQuestion && !canAskNew(subscription)) {
+      // Release the synchronous send guard before bailing: this early return is
+      // BEFORE the try/finally that normally clears it, so without this the ref
+      // would stay latched and silently block every future send until reload.
+      sendingRef.current = false;
       // Heal a stale snapshot too (e.g. the plan was activated on another
       // device or by the payment webhook): the refreshed usage re-renders the
       // modal's status line, and the next attempt passes if access returned.
@@ -517,6 +892,10 @@ export default function App() {
     // authoritative final answer from the "done" event (with Deep-check on,
     // that final text is the examiner-corrected version of the draft).
     const streamId = `model-stream-${Date.now()}`;
+    // Whether a streaming draft ever appeared: it decides the answer's id
+    // (the draft's, kept in place on the final swap) vs the message's own,
+    // on screen AND in the study log, which must match (see finalize).
+    let draftShown = false;
     const patchStream = (patch: Partial<ChatMessage> | ((m: ChatMessage) => ChatMessage)) =>
       setChatHistory((prev) =>
         prev.map((m) => (m.id === streamId ? (typeof patch === "function" ? patch(m) : { ...m, ...patch }) : m))
@@ -578,7 +957,19 @@ export default function App() {
       // The answer always persists to its own conversation, but only paints
       // into local state while that conversation is still the one on screen
       // (it reloads from the server if the student comes back later).
-      const finalize = (msg: ChatMessage) => {
+      const finalize = (raw: ChatMessage) => {
+        answeredOk = true;
+        // The answer keeps the streaming draft's id on screen (the in-place
+        // swap below), so it must persist under that SAME id: every later
+        // id-keyed operation (the Deep-check re-save upsert, a deepFor link
+        // from a "Go deeper" tap) targets the on-screen id, and a mismatched
+        // persisted id would leave it dangling after a reload. A notebook also
+        // carries the pointer to the answer it deepens, right on the message.
+        const msg: ChatMessage = {
+          ...raw,
+          id: draftShown ? streamId : raw.id,
+          ...(opts?.deepSourceId ? { deepFor: opts.deepSourceId } : {})
+        };
         if (activeIdRef.current === convId) {
           // If a streaming draft is already on screen, swap its content in
           // place (keeping its id) so the completed answer settles once and
@@ -586,7 +977,7 @@ export default function App() {
           // genuine first appearance (image path, stream skipped) animates in.
           setChatHistory((prev) =>
             prev.some((m) => m.id === streamId)
-              ? prev.map((m) => (m.id === streamId ? { ...msg, id: m.id } : m))
+              ? prev.map((m) => (m.id === streamId ? msg : m))
               : [...prev.filter((m) => m.id !== streamId), msg]
           );
         }
@@ -603,6 +994,7 @@ export default function App() {
             baseBody,
             (chunk) => {
               if (activeIdRef.current !== convId) return;
+              draftShown = true;
               setChatHistory((prev) => {
                 if (prev.some((m) => m.id === streamId)) {
                   return prev.map((m) => (m.id === streamId ? { ...m, text: m.text + chunk } : m));
@@ -682,6 +1074,9 @@ export default function App() {
       // Let the understanding read pick up any verdict this turn produced
       // (recorded server-side just after the answer).
       setUnderstandingKey((k) => k + 1);
+      // A real answer arrived: light the diya on the day's first ask and
+      // count the doubt toward its lifetime milestones.
+      if (answeredOk) onAnswered(text, opts);
     }
   };
 
@@ -936,6 +1331,18 @@ export default function App() {
     !(message.sources && message.sources.length > 0) &&
     parseTeachingSections(message.text).sections.length === 0;
 
+  // "Go deeper" is one-shot per answer: the first tap generates the notebook,
+  // later taps scroll back to it. Regenerating would only re-serve the same
+  // cached notebook and stack a duplicate at the bottom of the thread.
+  const openDeepDive = (msgIdx: number, message: ChatMessage) => {
+    const existingId = deepDiveOf[message.id];
+    if (existingId) {
+      document.getElementById(`msg-bubble-${existingId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    handleSendMessage(questionBefore(msgIdx), { deep: true, silent: true, deepSourceId: message.id });
+  };
+
   // ---- On-demand Deep-check: examiner pass over an existing answer ----
   const handleDeepCheck = async (msg: ChatMessage, question: string) => {
     if (!activeId || isGenerating) return;
@@ -947,7 +1354,10 @@ export default function App() {
         setChatHistory((prev) => prev.map((m) => (m.id === msg.id ? { ...m, text: data.text, verification: data.verification } : m)));
       }
       // Re-save under the same id so the study log keeps the corrected answer.
-      api.addMessage(convId, { id: msg.id, role: "model", text: data.text, sources: msg.sources || [] }).catch(() => {});
+      // deepFor rides along: if the original save was lost (flaky network),
+      // this re-save CREATES the row, and the deep-dive link must not be
+      // dropped with it (the upsert only backfills it, never overwrites).
+      api.addMessage(convId, { id: msg.id, role: "model", text: data.text, sources: msg.sources || [], deepFor: msg.deepFor }).catch(() => {});
     } catch (e) {
       console.error("Deep-check failed:", e);
       if (activeIdRef.current === convId) {
@@ -1029,6 +1439,18 @@ export default function App() {
           <span className="hidden md:block text-xs text-editorial-charcoal/70 mr-1">
             {profile.name} · {profile.board}
           </span>
+          {/* The diya: lifetime days you showed up. It only ever grows; an
+              unlit diya is an invitation, never a loss. */}
+          {stats && stats.daysActive > 0 && (
+            <div
+              title={diyaTitle(profile.language, stats.daysActive, stats.activeToday)}
+              className="flex items-center gap-1 px-2.5 h-9 rounded-full border border-editorial-line text-xs text-editorial-charcoal/80 shrink-0 select-none"
+              id="diya-badge"
+            >
+              <Flame size={13} className={stats.activeToday ? "text-amber-500 fill-amber-400 cfy-diya-lit" : "text-editorial-charcoal/30"} />
+              <span className="tabular-nums">{stats.daysActive}</span>
+            </div>
+          )}
           <UsagePill
             subscription={subscription}
             onClick={() => {
@@ -1054,6 +1476,7 @@ export default function App() {
               setEditProfileForm({ ...profile });
               setIsEditingProfile(true);
             }}
+            title="Change your board, class, language, or study style"
             className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-full border border-editorial-line text-xs hover:bg-editorial-stone transition-colors cursor-pointer"
             id="btn-settings-profile"
           >
@@ -1086,6 +1509,7 @@ export default function App() {
           {/* New chat */}
           <button
             onClick={handleNewChat}
+            title="Start a fresh chat for a new doubt"
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-editorial-charcoal text-white text-sm font-medium hover:bg-editorial-charcoal/90 transition-colors cursor-pointer shadow-sm"
             id="btn-new-chat"
           >
@@ -1155,12 +1579,13 @@ export default function App() {
             </div>
           </div>
 
-          <UnderstandingPanel refreshKey={understandingKey} />
+          <UnderstandingPanel enabled={comp.enabled} concepts={comp.concepts} summary={comp.summary} glowKeys={glowKeys} />
 
           {/* Chapter mastery, collapsible, secondary */}
           <div className="flex flex-col gap-2 border-t border-editorial-line pt-3 mt-auto">
             <button
               onClick={() => setShowChapters((v) => !v)}
+              title="Your chapters and how strong each one feels"
               className="flex items-center justify-between px-1 cursor-pointer text-editorial-sage"
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
@@ -1174,6 +1599,7 @@ export default function App() {
               <>
                 <button
                   onClick={() => setIsAddingChapter((v) => !v)}
+                  title="Add a chapter you are studying right now"
                   className="flex items-center gap-1.5 self-start px-2.5 py-1 text-[11px] text-editorial-sage hover:bg-editorial-sage/10 rounded-full transition-colors cursor-pointer"
                 >
                   <Plus size={12} /> Add chapter
@@ -1190,8 +1616,8 @@ export default function App() {
                       className="px-3 py-1.5 border border-editorial-line rounded-lg text-xs bg-editorial-ivory/50 focus:outline-none focus:ring-1 focus:ring-editorial-sage placeholder-editorial-charcoal/35"
                     />
                     <div className="flex justify-end gap-1.5">
-                      <button type="button" onClick={() => setIsAddingChapter(false)} className="px-2.5 py-1 text-[10px] text-editorial-charcoal/60 hover:bg-editorial-stone rounded">Cancel</button>
-                      <button type="submit" className="px-3 py-1 text-[10px] bg-editorial-sage text-white rounded font-medium">Add & study</button>
+                      <button type="button" onClick={() => setIsAddingChapter(false)} title="Close without adding" className="px-2.5 py-1 text-[10px] text-editorial-charcoal/60 hover:bg-editorial-stone rounded">Cancel</button>
+                      <button type="submit" title="Add this chapter and start a deep study session on it" className="px-3 py-1 text-[10px] bg-editorial-sage text-white rounded font-medium">Add & study</button>
                     </div>
                   </form>
                 )}
@@ -1205,7 +1631,7 @@ export default function App() {
                     >
                       <div className="flex justify-between items-start gap-1">
                         <h4 className="text-xs font-medium text-editorial-charcoal leading-tight pr-4">{ch.name}</h4>
-                        <button onClick={(e) => handleDeleteChapter(ch.id, e)} className="opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-editorial-charcoal/40 hover:text-red-700 transition-opacity">
+                        <button onClick={(e) => handleDeleteChapter(ch.id, e)} title="Remove this chapter" className="opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-editorial-charcoal/40 hover:text-red-700 transition-opacity">
                           <Trash2 size={11} />
                         </button>
                       </div>
@@ -1213,6 +1639,7 @@ export default function App() {
                         {(["weak", "developing", "strong"] as const).map((m) => (
                           <button
                             key={m}
+                            title={`Mark this chapter as ${m} for you`}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleUpdateMastery(ch.id, m);
@@ -1246,6 +1673,18 @@ export default function App() {
           transition={{ duration: 0.45, delay: 0.06, ease: [0.22, 0.61, 0.36, 1] }}
           className={`${mobileView === "chat" ? "flex" : "hidden"} lg:flex flex-1 min-h-0 flex-col bg-surface/40 p-3 md:p-6 overflow-hidden`}
         >
+
+          {/* First Star: the free week made visible for trial students. */}
+          <TrialArc
+            subscription={subscription}
+            doubtsCleared={stats?.doubtsCleared ?? null}
+            savedCount={savedCount}
+            practiced={comp.summary.practiced}
+            landed={comp.summary.landed}
+            landingEnabled={comp.enabled}
+            language={profile.language}
+            scope={scope}
+          />
 
           {/* Live status strip */}
           {isLiveActive && (
@@ -1286,6 +1725,7 @@ export default function App() {
                     {SUGGESTED_QUERIES.map((q, idx) => (
                       <button
                         key={idx}
+                        title={q.hint}
                         onClick={() => selectSuggestedPrompt(q.prompt)}
                         className="group flex items-start gap-3 text-left px-4 py-3 rounded-2xl border border-editorial-line bg-surface hover:border-editorial-sage/50 hover:bg-editorial-sage/[0.06] motion-safe:hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
                       >
@@ -1420,13 +1860,15 @@ export default function App() {
                       )}
                       {canGoDeep(message) && (
                         <button
-                          onClick={() => handleSendMessage(questionBefore(msgIdx), { deep: true, silent: true })}
+                          onClick={() => openDeepDive(msgIdx, message)}
                           disabled={isGenerating}
                           className={ACTION_PILL}
                           id={`btn-deepdive-${message.id}`}
-                          title="Open the full study view: the exam-ready answer plus the nine-part notebook"
+                          title={deepDiveOf[message.id]
+                            ? "Jump to the study notebook you already opened for this answer"
+                            : "Open the full study view: the exam-ready answer plus the nine-part notebook"}
                         >
-                          <BookOpen size={12} className="shrink-0" /> Go deeper
+                          <BookOpen size={12} className="shrink-0" /> {deepDiveOf[message.id] ? "View notebook" : "Go deeper"}
                         </button>
                       )}
                       {message.text.length > 200 && message.verification !== "passed" && message.verification !== "checking" && (
@@ -1454,6 +1896,7 @@ export default function App() {
                       )}
                       <button
                         onClick={() => handleSpeak(message.id, message.text)}
+                        title={playingMessageId === message.id ? "Stop reading this answer aloud" : "Hear this answer read aloud"}
                         className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all shrink-0 cursor-pointer sm:ml-auto ${
                           playingMessageId === message.id ? "bg-editorial-sage text-white" : "bg-editorial-stone hover:bg-editorial-sage/10 text-editorial-sage border border-editorial-line-light"
                         }`}
@@ -1463,6 +1906,40 @@ export default function App() {
                       </button>
                     </div>
                   )}
+
+                  {/* First-star nudge: a trial student with no measured win yet
+                      gets one gentle pointer toward the shortest path to their
+                      first PAKKA, replying in their own words. Worded so it
+                      holds true even when this particular answer poses no closing
+                      check. Dismissible, one line, never a demand. */}
+                  {message.role === "model" &&
+                    message.text.length > 200 &&
+                    !message.streaming &&
+                    !message.isError &&
+                    msgIdx === chatHistory.length - 1 &&
+                    !isGenerating &&
+                    !checkNudgeDismissed &&
+                    subscription?.plan === "trial" &&
+                    comp.enabled &&
+                    comp.summary.practiced + comp.summary.landed === 0 && (
+                      <div className="mt-2 flex items-center gap-2 text-[11px] text-editorial-charcoal/60">
+                        <Star size={11} className="text-amber-500 shrink-0" />
+                        <span className="min-w-0">
+                          {profile.language === "Hindi"
+                            ? "नीचे अपने शब्दों में जवाब दो, आपका पहला star यहीं जलता है"
+                            : profile.language === "English"
+                            ? "Reply below in your own words, that is where your first star lights up"
+                            : "Neeche apne shabdon mein jawaab do, aapka pehla star yahin jalta hai"}
+                        </span>
+                        <button
+                          onClick={() => setCheckNudgeDismissed(true)}
+                          aria-label="Dismiss"
+                          className="shrink-0 text-editorial-charcoal/40 hover:text-editorial-charcoal cursor-pointer"
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
+                    )}
                 </div>
               </motion.div>
             ))}
@@ -1500,6 +1977,28 @@ export default function App() {
             </div>
           )}
 
+          {/* Ready to Land: on a fresh open, up to three concepts whose one
+              graded pass was on an earlier day. One 30-second check each, free,
+              and a PASS today promotes it to landed for good. Skips carry no
+              debt; the card steps aside the moment the student asks anything. */}
+          <AnimatePresence>
+            {comp.enabled &&
+              comp.ready.length > 0 &&
+              rtlState !== "posed" &&
+              !rtlDismissed &&
+              !sentThisSession &&
+              !isGenerating &&
+              !dataLoading && (
+                <ReadyToLandCard
+                  ready={comp.ready}
+                  busy={rtlState === "loading"}
+                  language={profile.language}
+                  onConfirm={handleReadyConfirm}
+                  onDismiss={handleReadyDismiss}
+                />
+              )}
+          </AnimatePresence>
+
           {/* Selected-lines save bar: appears while the student is highlighting
               inside an answer, so keeping a line is one calm tap. */}
           {selSave &&
@@ -1518,6 +2017,7 @@ export default function App() {
                   onMouseDown={(e) => e.preventDefault() /* keep the selection alive */}
                   onClick={() => saveSelectionToNotebook()}
                   disabled={savingSelection}
+                  title="Save the highlighted lines to your Pre-exam notebook"
                   className="flex shrink-0 items-center gap-1.5 rounded-full bg-editorial-sage px-4 py-2 text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-60 cursor-pointer motion-safe:active:scale-[0.97]"
                   id="btn-save-selection"
                 >
@@ -1571,6 +2071,7 @@ export default function App() {
             </button>
             <button
               onClick={() => handleSendMessage()}
+              title="Send your question"
               className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 cursor-pointer motion-safe:transition-all motion-safe:active:scale-[0.96] ${
                 isGenerating
                   ? "bg-editorial-sage/70 text-white"
@@ -1593,6 +2094,7 @@ export default function App() {
         ] as const).map((t) => (
           <button
             key={t.k}
+            title={t.k === "study" ? "Your chats, progress, and chapters" : "Ask and read answers"}
             onClick={() => setMobileView(t.k)}
             className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium border-t-2 transition-colors ${
               mobileView === t.k
@@ -1606,6 +2108,7 @@ export default function App() {
         ))}
         <button
           onClick={() => setNotebookOpen(true)}
+          title="Every line you saved, filed by subject and chapter"
           className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium border-t-2 border-transparent text-editorial-charcoal/70 hover:text-editorial-charcoal transition-colors"
           id="tab-notebook"
         >
@@ -1625,6 +2128,9 @@ export default function App() {
           setShowUpgrade(true);
         }}
       />
+
+      {/* PAKKA moments: examiner-verified wins and real milestones only. */}
+      <CelebrationOverlay celebration={celebration} onDone={advanceCelebration} />
 
       {/* Quiet toast (saves, hints) */}
       <AnimatePresence>
@@ -1674,7 +2180,7 @@ export default function App() {
                   <Settings size={18} className="text-editorial-sage" />
                   <h3 className="text-base kod-display font-medium text-editorial-charcoal">Study Preferences</h3>
                 </div>
-                <button onClick={() => setIsEditingProfile(false)} className="text-editorial-charcoal/40 hover:text-editorial-charcoal text-2xl cursor-pointer leading-none">&times;</button>
+                <button onClick={() => setIsEditingProfile(false)} title="Close preferences" className="text-editorial-charcoal/40 hover:text-editorial-charcoal text-2xl cursor-pointer leading-none">&times;</button>
               </div>
 
               <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
@@ -1732,7 +2238,7 @@ export default function App() {
                   <label className="text-[11px] font-semibold text-editorial-charcoal/70">Voice (for spoken answers)</label>
                   <div className="grid grid-cols-5 gap-1.5">
                     {(["Kore", "Zephyr", "Puck", "Charon", "Fenrir"] as const).map((vc) => (
-                      <button key={vc} type="button" onClick={() => setSelectedVoice(vc)} className={`py-2 px-1 rounded-full text-[11px] font-medium text-center border transition-colors cursor-pointer ${selectedVoice === vc ? "bg-editorial-sage border-editorial-sage text-white" : "bg-surface border-editorial-line-light hover:bg-editorial-stone text-editorial-charcoal"}`}>
+                      <button key={vc} type="button" title={`Use the ${vc} voice when answers are read aloud`} onClick={() => setSelectedVoice(vc)} className={`py-2 px-1 rounded-full text-[11px] font-medium text-center border transition-colors cursor-pointer ${selectedVoice === vc ? "bg-editorial-sage border-editorial-sage text-white" : "bg-surface border-editorial-line-light hover:bg-editorial-stone text-editorial-charcoal"}`}>
                         {vc}
                       </button>
                     ))}
@@ -1745,8 +2251,8 @@ export default function App() {
                 </div>
 
                 <div className="flex justify-end gap-2 mt-2">
-                  <button type="button" onClick={() => setIsEditingProfile(false)} className="px-5 py-2.5 border border-editorial-line text-editorial-charcoal hover:bg-editorial-stone rounded-full text-sm transition-colors cursor-pointer">Cancel</button>
-                  <button type="submit" className="px-5 py-2.5 bg-editorial-charcoal hover:bg-editorial-charcoal/90 text-white rounded-full text-sm transition-colors cursor-pointer">Save changes</button>
+                  <button type="button" onClick={() => setIsEditingProfile(false)} title="Close without saving" className="px-5 py-2.5 border border-editorial-line text-editorial-charcoal hover:bg-editorial-stone rounded-full text-sm transition-colors cursor-pointer">Cancel</button>
+                  <button type="submit" title="Save your study preferences" className="px-5 py-2.5 bg-editorial-charcoal hover:bg-editorial-charcoal/90 text-white rounded-full text-sm transition-colors cursor-pointer">Save changes</button>
                 </div>
 
                 <p className="border-t border-editorial-line-light pt-3 text-center text-[11px] text-editorial-charcoal/70">

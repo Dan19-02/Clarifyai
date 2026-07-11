@@ -125,6 +125,7 @@ export default function UpgradeModal({ open, onClose, account, subscription, rea
             <button
               onClick={onClose}
               aria-label="Close"
+              title="Close and keep studying"
               className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-editorial-line text-editorial-charcoal/50 transition-colors hover:bg-editorial-stone hover:text-editorial-charcoal"
             >
               <X size={16} />
@@ -178,6 +179,7 @@ export default function UpgradeModal({ open, onClose, account, subscription, rea
                     <button
                       onClick={() => buy(plan.id)}
                       disabled={busy || busyPlan !== null || renewLocked}
+                      title={`Get the ${plan.name} pass for 30 days`}
                       className={`mt-5 flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60 ${
                         plan.featured ? "bg-sage-bright text-night" : "bg-editorial-charcoal text-white"
                       }`}

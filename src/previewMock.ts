@@ -191,6 +191,39 @@ export function installPreviewMocks(api: typeof ApiShape) {
       note: null,
     });
   api.saveNotebookEntry = () => ok({ ok: true, id: `e-${Date.now()}` });
+  // Stateful on purpose: the second read shows the practiced concept as
+  // landed, so the workspace's transition diff (and its PAKKA celebration)
+  // can be seen in preview without waiting a real spaced day.
+  // > 2 (not > 1): StrictMode double-invokes the mount effect in dev, so the
+  // first two reads land within milliseconds of each other.
+  let compReads = 0;
+  api.getComprehension = () => {
+    compReads++;
+    const promoted = compReads > 2;
+    return ok({
+      enabled: true,
+      concepts: [
+        {
+          key: "newtons-second-law",
+          label: "Newton's second law",
+          chapter: "Laws of Motion",
+          state: (promoted ? "landed" : "practiced") as "landed" | "practiced",
+          struggles: 0,
+          passes: promoted ? 2 : 1,
+          lastSeen: NOW,
+        },
+        { key: "friction-basics", label: "Friction", chapter: "Laws of Motion", state: "working_on_it" as const, struggles: 1, passes: 0, lastSeen: NOW },
+      ],
+      summary: { landed: promoted ? 1 : 0, practiced: promoted ? 0 : 1, working: 1 },
+      ready: promoted ? [] : [{ key: "newtons-second-law", label: "Newton's second law", chapter: "Laws of Motion" }],
+    });
+  };
+  api.confirmCheck = () =>
+    ok({
+      question: "A loaded truck and an empty scooter both need to speed up by the same amount in the same time. Which one needs the bigger push, and why?",
+      label: "Newton's second law",
+    });
+  api.getMeStats = () => ok({ daysActive: 4, activeToday: false, doubtsCleared: 12 });
   api.deleteNotebookEntry = () => ok({} as any);
   api.generateClarifyNotes = () =>
     ok({

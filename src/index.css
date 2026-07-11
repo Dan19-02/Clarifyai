@@ -226,3 +226,96 @@
   .kod-bob { animation: none !important; }
   .kod-card:hover, .kod-btn:hover, .kod-btn-ghost:hover { transform: none; }
 }
+
+/* ---- Celebrations (the honest dopamine layer) ----------------------------
+   Pure CSS so it stays light on low-end Androids; every animation is skipped
+   under prefers-reduced-motion. */
+
+/* The 1.5s sparkle burst on a PAKKA card. Each spark flies to its own
+   --sx/--sy offset and fades. */
+.cfy-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-editorial-sage, #3560ee);
+  opacity: 0;
+  animation: cfy-spark 1.5s ease-out forwards;
+}
+@keyframes cfy-spark {
+  0% { transform: translate(0, 0) scale(0); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translate(var(--sx, 0px), var(--sy, -60px)) scale(1); opacity: 0; }
+}
+
+/* A freshly promoted chip in the What's-landing panel glows once as it
+   slides up the list. */
+.cfy-chip-glow { animation: cfy-chip-glow 1.6s ease-out 1; }
+@keyframes cfy-chip-glow {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-editorial-sage, #3560ee) 55%, transparent); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+
+/* Save-lines: the "+1" that flies from the save button to the notebook. */
+.cfy-fly {
+  position: fixed;
+  z-index: 80;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--color-editorial-sage, #3560ee);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+  transition: transform 0.8s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.8s ease-in;
+}
+.cfy-bounce { animation: cfy-bounce 0.6s ease 1; }
+@keyframes cfy-bounce {
+  0%, 100% { transform: scale(1); }
+  35% { transform: scale(1.25); }
+  65% { transform: scale(0.95); }
+}
+
+/* The lit diya in the header breathes very gently. */
+.cfy-diya-lit { animation: cfy-diya 2.4s ease-in-out infinite; }
+@keyframes cfy-diya {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+
+/* Tiny in-button wait indicator on a tapped Ready-to-Land chip. */
+.cfy-dotpulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: cfy-dotpulse 0.9s ease-in-out infinite;
+}
+@keyframes cfy-dotpulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cfy-sparkle, .cfy-fly, .cfy-bounce, .cfy-diya-lit, .cfy-dotpulse { animation: none !important; transition: none !important; }
+}
+
+/* ---- Parchi printing ------------------------------------------------------
+   Printing from the Pre-exam notebook prints ONLY the revision sheet: one
+   clean parchi, the night-before-exam artifact. Scoped with :has() so a
+   normal Ctrl+P anywhere else in the app still prints the page as-is (on
+   engines without :has(), the notebook print simply includes the chrome). */
+@media print {
+  body:has(.parchi-print) * { visibility: hidden; }
+  body:has(.parchi-print) .parchi-print,
+  body:has(.parchi-print) .parchi-print * { visibility: visible; }
+  body:has(.parchi-print) .parchi-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 24px;
+    background: #fff !important;
+    color: #111 !important;
+  }
+}
