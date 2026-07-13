@@ -13,7 +13,7 @@
  * - No em or en dashes anywhere (app-wide punctuation rule).
  */
 
-export type CelebrationTone = "practiced" | "landed" | "star" | "milestone" | "parchi";
+export type CelebrationTone = "practiced" | "landed" | "milestone" | "parchi";
 
 export interface Celebration {
   tone: CelebrationTone;
@@ -32,13 +32,13 @@ let totalFired = 0;
 /** May a celebration of this tone still fire this session? */
 export function canFire(tone: CelebrationTone): boolean {
   if (totalFired >= TOTAL_SESSION_CAP) return false;
-  if ((tone === "practiced" || tone === "landed" || tone === "star") && pakkaFired >= PAKKA_SESSION_CAP) return false;
+  if ((tone === "practiced" || tone === "landed") && pakkaFired >= PAKKA_SESSION_CAP) return false;
   return true;
 }
 
 export function markFired(tone: CelebrationTone): void {
   totalFired++;
-  if (tone === "practiced" || tone === "landed" || tone === "star") pakkaFired++;
+  if (tone === "practiced" || tone === "landed") pakkaFired++;
 }
 
 /** One-shot localStorage claim: returns true the FIRST time a key is claimed,

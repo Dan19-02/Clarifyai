@@ -38,7 +38,7 @@ export function CelebrationOverlay({ celebration, onDone }: { celebration: Celeb
     return () => clearTimeout(t);
   }, [celebration]);
 
-  const landedTone = celebration?.tone === "landed" || celebration?.tone === "star";
+  const landedTone = celebration?.tone === "landed";
 
   return (
     <AnimatePresence>

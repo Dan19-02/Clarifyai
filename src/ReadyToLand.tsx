@@ -3,33 +3,50 @@
  * app WITHOUT being confused.
  *
  * A practiced concept (one examiner-graded pass) becomes "landed" only after a
- * second pass on a LATER day. This card surfaces at most three such concepts
- * on a fresh open: tap one, the server poses a fresh transfer question, you
- * answer it in the normal chat, and a PASS promotes it for good.
+ * second pass on a LATER day. This card surfaces at most three chips on a
+ * fresh open: tap one, the server poses a fresh transfer question, you answer
+ * it in the normal chat, and a PASS promotes it for good. Landed concepts
+ * also return here on the forgetting curve (3/7/21 days) as gentle "keep it
+ * fresh" chips; a wobble on those NEVER takes landed away.
  *
  * Anxiety guardrails, by construction:
  * - max 3 chips, framed as locking in a win, never as a quiz or homework;
  * - fully dismissible, never re-nags the same day, skips carry no debt;
  * - it costs no credits (the reply rides the free follow-up path);
- * - a FAIL simply returns the concept to working-on-it with a warm
+ * - a FAIL simply returns a practiced concept to working-on-it with a warm
  *   re-explanation in chat. Nothing here ever shows red.
  */
 import { useState } from "react";
 import { motion } from "motion/react";
-import { CircleDot, X } from "lucide-react";
+import { CircleDot, Sparkles, X } from "lucide-react";
 
 export interface ReadyConcept {
   key: string;
   label: string;
   chapter: string | null;
+  /** "confirm" = practiced, a pass today lands it; "refresh" = landed, its
+   *  forgetting-curve re-check came due (3/7/21 days). Older backends omit it. */
+  kind?: "confirm" | "refresh";
 }
 
 function copy(language: string) {
   if (language === "Hindi")
-    return { title: "आज पक्का करने के लिए तैयार", sub: "30 seconds का एक छोटा check · कोई credit नहीं लगता", skip: "आज नहीं" };
+    return {
+      title: "आज पक्का करने के लिए तैयार", sub: "30 seconds का एक छोटा check · कोई credit नहीं लगता", skip: "आज नहीं",
+      confirmTip: (l: string) => `${l} पर एक छोटा check. आज pass हुआ तो हमेशा के लिए आपका`,
+      refreshTip: (l: string) => `${l} आपका landed hai. एक छोटा check उसे fresh रखेगा`,
+    };
   if (language === "English")
-    return { title: "Ready to land", sub: "One 30 second check · costs no credits", skip: "Not today" };
-  return { title: "Aaj pakka karne ke liye ready", sub: "Ek 30 second ka check · koi credit nahin lagta", skip: "Aaj nahin" };
+    return {
+      title: "Ready to land", sub: "One 30 second check · costs no credits", skip: "Not today",
+      confirmTip: (l: string) => `One quick check on ${l}. Pass it today and it is yours for good`,
+      refreshTip: (l: string) => `${l} is landed. One quick check keeps it fresh`,
+    };
+  return {
+    title: "Aaj pakka karne ke liye ready", sub: "Ek 30 second ka check · koi credit nahin lagta", skip: "Aaj nahin",
+    confirmTip: (l: string) => `${l} par ek chhota check. Aaj pass hua to hamesha ke liye aapka`,
+    refreshTip: (l: string) => `${l} landed hai. Ek chhota check use fresh rakhega`,
+  };
 }
 
 export function ReadyToLandCard({
@@ -77,7 +94,7 @@ export function ReadyToLandCard({
           <button
             key={r.key}
             disabled={busy}
-            title={`One quick check on ${r.label}. Pass it today and it is yours for good`}
+            title={r.kind === "refresh" ? c.refreshTip(r.label) : c.confirmTip(r.label)}
             onClick={() => {
               setTapped(r.key);
               onConfirm(r);
@@ -85,7 +102,7 @@ export function ReadyToLandCard({
             className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-editorial-sage/40 bg-surface px-3.5 py-1.5 text-xs text-editorial-sage hover:bg-editorial-sage hover:text-white transition-all disabled:opacity-50 cursor-pointer motion-safe:active:scale-[0.97]"
             id={`btn-rtl-${r.key}`}
           >
-            <CircleDot size={12} className="shrink-0" />
+            {r.kind === "refresh" ? <Sparkles size={12} className="shrink-0" /> : <CircleDot size={12} className="shrink-0" />}
             <span className="max-w-56 truncate">{r.label}</span>
             {busy && tapped === r.key && <span className="cfy-dotpulse" aria-hidden />}
           </button>

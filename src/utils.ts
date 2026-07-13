@@ -115,7 +115,25 @@ export interface ParsedTeaching {
   sections: NotebookSection[];
 }
 
+// Memoized: the workspace parses every completed answer at least twice per
+// render (notebook detection + the Go-deeper gate), and re-renders per
+// streaming paint. Keyed by the full text; a small cap bounds memory.
+const parseMemo = new Map<string, ParsedTeaching>();
+const PARSE_MEMO_MAX = 100;
+
 export function parseTeachingSections(text: string): ParsedTeaching {
+  const hit = parseMemo.get(text);
+  if (hit) return hit;
+  const parsed = parseTeachingSectionsUncached(text);
+  if (parseMemo.size >= PARSE_MEMO_MAX) {
+    const oldest = parseMemo.keys().next().value;
+    if (oldest !== undefined) parseMemo.delete(oldest);
+  }
+  parseMemo.set(text, parsed);
+  return parsed;
+}
+
+function parseTeachingSectionsUncached(text: string): ParsedTeaching {
   // The 9 Clarify notebook sections, identified by emoji + title.
   const defs = [
     { emoji: "🌟", title: "Big Idea" },

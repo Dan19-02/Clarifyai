@@ -1,6 +1,6 @@
 /**
  * Visual notebook: parses structured teacher responses into a swipeable card
- * deck — one idea per slide. Students swipe (or drag) to advance rather than
+ * deck: one idea per slide. Students swipe (or drag) to advance rather than
  * clicking through tabs. Shared by the study workspace (App.tsx) and the
  * landing page's live demo, so what visitors see on the landing page IS the
  * product component.
@@ -34,7 +34,7 @@ const sectionHint = (title: string): string =>
   SECTION_HINTS.find(([re]) => re.test(title))?.[1] || "This part of the notebook";
 
 // A swipe counts once it clears this much horizontal travel OR is thrown fast
-// enough — either a deliberate drag or a quick flick advances the card.
+// enough: either a deliberate drag or a quick flick advances the card.
 const SWIPE_DISTANCE = 60;
 const SWIPE_VELOCITY = 400;
 
@@ -66,8 +66,10 @@ export function NotebookViewer({ sections }: NotebookViewerProps) {
   const prev = () => step(-1);
   const next = () => step(1);
 
-  // Arrow keys drive the deck when it's the focused surface — desktop students
-  // (and testers) shouldn't have to reach for the mouse.
+  // Arrow keys drive the deck when it's the focused surface: desktop students
+  // (and testers) shouldn't have to reach for the mouse. Re-subscribes only
+  // when the deck size changes (the handler's bounds check closes over count),
+  // not on every parent re-render.
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
@@ -77,7 +79,8 @@ export function NotebookViewer({ sections }: NotebookViewerProps) {
     };
     el.addEventListener("keydown", onKey);
     return () => el.removeEventListener("keydown", onKey);
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count]);
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
     const { offset, velocity } = info;

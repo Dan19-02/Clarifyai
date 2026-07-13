@@ -50,7 +50,7 @@ import { DEFAULT_CHAPTERS, makeDefaultProfile, SUPPORT_EMAIL } from "./defaults"
 import { Markdown } from "./Markdown";
 import { NotebookViewer } from "./NotebookViewer";
 import UpgradeModal from "./UpgradeModal";
-import { UnderstandingPanel, type CompConcept, type CompSummary } from "./UnderstandingPanel";
+import { UnderstandingPanel, type CompConcept, type CompSummary, type CompToday } from "./UnderstandingPanel";
 import PreExamNotebook from "./PreExamNotebook";
 import { CelebrationOverlay } from "./CelebrationOverlay";
 import { ReadyToLandCard, type ReadyConcept } from "./ReadyToLand";
@@ -201,11 +201,12 @@ export default function App() {
   // The Landing Signal read now lives here (not in the panel): the workspace
   // needs it to diff state transitions for PAKKA moments, feed the sidebar
   // panel, and drive the Ready-to-Land queue, wherever the panel is hidden.
-  const [comp, setComp] = useState<{ enabled: boolean; concepts: CompConcept[]; summary: CompSummary; ready: ReadyConcept[] }>({
+  const [comp, setComp] = useState<{ enabled: boolean; concepts: CompConcept[]; summary: CompSummary; ready: ReadyConcept[]; today: CompToday }>({
     enabled: true,
     concepts: [],
     summary: { landed: 0, practiced: 0, working: 0 },
-    ready: []
+    ready: [],
+    today: { learned: [], fuzzy: [], touched: 0 }
   });
   // Previous per-concept states; null until the first read (the baseline never
   // celebrates: a transition that happened while away is not a fresh win).
@@ -280,7 +281,8 @@ export default function App() {
         enabled: raw?.enabled ?? false,
         concepts: raw?.concepts ?? [],
         summary: raw?.summary ?? { landed: 0, practiced: 0, working: 0 },
-        ready: raw?.ready ?? []
+        ready: raw?.ready ?? [],
+        today: raw?.today ?? { learned: [], fuzzy: [], touched: 0 }
       };
       setComp(data);
       const prev = compPrevRef.current;
@@ -340,7 +342,7 @@ export default function App() {
     chapterCountsRef.current = null;
     celebrationQueue.current = [];
     celebrationActiveRef.current = false;
-    setComp({ enabled: true, concepts: [], summary: { landed: 0, practiced: 0, working: 0 }, ready: [] });
+    setComp({ enabled: true, concepts: [], summary: { landed: 0, practiced: 0, working: 0 }, ready: [], today: { learned: [], fuzzy: [], touched: 0 } });
     setCelebration(null);
     setGlowKeys([]);
     setStats(null);
@@ -821,6 +823,7 @@ export default function App() {
     setSentThisSession(true);
     // Set inside finalize (success only): drives the diya + doubt counters.
     let answeredOk = false;
+    let paywalled = false;
     // No open conversation (the list failed to load, or was emptied): create
     // one on the spot instead of silently swallowing the student's question.
     let convId = opts?.convId ?? activeId;
@@ -907,6 +910,7 @@ export default function App() {
     // the next ask in this thread look like a free follow-up), the auto-title
     // reverted, and the typed question handed back to the input box.
     const handlePaywall = (sub: Subscription | undefined, message: string) => {
+      paywalled = true;
       if (sub) applySubscription(sub);
       else refreshSubscription();
       setUpgradeReason(message || blockedReason(sub));
@@ -987,34 +991,54 @@ export default function App() {
       // Try streaming first. Text-only, and not for explicit Search mode: the
       // server would just answer "fallback" while charging a rate-limit token.
       // (Auto-routed search from Standard is still caught server-side.)
+      // Deltas are buffered and painted at most every 80ms: per-token
+      // setChatHistory re-renders the whole workspace and re-parses the
+      // growing draft, which chokes low-end phones (the primary audience).
       let streamResult: Awaited<ReturnType<typeof api.chatStream>> | null = null;
+      let pendingDelta = "";
+      let deltaTimer: ReturnType<typeof setTimeout> | null = null;
+      const flushDelta = () => {
+        if (deltaTimer) clearTimeout(deltaTimer);
+        deltaTimer = null;
+        const chunk = pendingDelta;
+        pendingDelta = "";
+        if (!chunk || activeIdRef.current !== convId) return;
+        draftShown = true;
+        setChatHistory((prev) => {
+          if (prev.some((m) => m.id === streamId)) {
+            return prev.map((m) => (m.id === streamId ? { ...m, text: m.text + chunk } : m));
+          }
+          const bubble: ChatMessage = {
+            id: streamId,
+            role: "model",
+            text: chunk,
+            timestamp: new Date().toLocaleTimeString(),
+            streaming: true
+          };
+          return [...prev, bubble];
+        });
+      };
       if (images.length === 0) {
         try {
           streamResult = await api.chatStream(
             baseBody,
             (chunk) => {
               if (activeIdRef.current !== convId) return;
-              draftShown = true;
-              setChatHistory((prev) => {
-                if (prev.some((m) => m.id === streamId)) {
-                  return prev.map((m) => (m.id === streamId ? { ...m, text: m.text + chunk } : m));
-                }
-                const bubble: ChatMessage = {
-                  id: streamId,
-                  role: "model",
-                  text: chunk,
-                  timestamp: new Date().toLocaleTimeString(),
-                  streaming: true
-                };
-                return [...prev, bubble];
-              });
+              pendingDelta += chunk;
+              if (!deltaTimer) deltaTimer = setTimeout(flushDelta, 80);
             },
-            () => patchStream({ verification: "checking", streaming: false })
+            () => {
+              flushDelta();
+              patchStream({ verification: "checking", streaming: false });
+            }
           );
         } catch (streamErr: any) {
           console.warn("Streaming failed, retrying on /chat:", streamErr?.message || streamErr);
           streamResult = { kind: "fallback", reason: "stream-failed" };
         }
+        // Whatever streamed is on screen before anything else happens; no
+        // trailing timer may fire after the draft-to-final swap below.
+        flushDelta();
       }
 
       // The stream reported the student is out of trial / quota: stop here and
@@ -1071,9 +1095,11 @@ export default function App() {
     } finally {
       sendingRef.current = false;
       setIsGenerating(false);
-      // Let the understanding read pick up any verdict this turn produced
-      // (recorded server-side just after the answer).
-      setUnderstandingKey((k) => k + 1);
+      // Refresh the understanding read unless the send was paywalled (a
+      // blocked ask produces no verdict). An errored send still refetches:
+      // the server may have recorded a verdict before the client-side
+      // failure, and a PAKKA moment must not wait for the next open.
+      if (!paywalled) setUnderstandingKey((k) => k + 1);
       // A real answer arrived: light the diya on the day's first ask and
       // count the doubt toward its lifetime milestones.
       if (answeredOk) onAnswered(text, opts);
@@ -1579,7 +1605,7 @@ export default function App() {
             </div>
           </div>
 
-          <UnderstandingPanel enabled={comp.enabled} concepts={comp.concepts} summary={comp.summary} glowKeys={glowKeys} />
+          <UnderstandingPanel enabled={comp.enabled} concepts={comp.concepts} summary={comp.summary} glowKeys={glowKeys} today={comp.today} language={profile.language} />
 
           {/* Chapter mastery, collapsible, secondary */}
           <div className="flex flex-col gap-2 border-t border-editorial-line pt-3 mt-auto">

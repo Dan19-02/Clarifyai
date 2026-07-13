@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
-export const THEME_KEY = "clarify-theme";
+const THEME_KEY = "clarify-theme"; // index.html hardcodes this for the pre-paint apply
 
 function currentTheme(): "light" | "dark" {
   return document.documentElement.dataset.theme === "dark" ? "dark" : "light";

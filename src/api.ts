@@ -52,23 +52,6 @@ export interface Account {
   subscription?: Subscription;
 }
 
-export interface PlanInfo {
-  id: "starter" | "regular" | "unlimited";
-  name: string;
-  price: number;
-  amountPaise: number;
-  monthlyQueries: number | null;
-  blurb: string;
-}
-
-export interface PlansResponse {
-  plans: PlanInfo[];
-  trial: { days: number; dailyQueries: number };
-  passDays: number;
-  configured: boolean;
-  currency: string;
-}
-
 /** What the backend returns to open Razorpay Checkout for a plan. */
 export interface OrderResponse {
   orderId: string;
@@ -200,7 +183,6 @@ export const api = {
     request<{ user: Account }>("/me", { method: "PUT", body: JSON.stringify(body) }),
 
   // Billing (Razorpay one-time monthly pass)
-  getPlans: () => request<PlansResponse>("/billing/plans"),
   getSubscription: () => request<{ subscription: Subscription }>("/subscription"),
   createOrder: (plan: string) =>
     request<OrderResponse>("/billing/order", { method: "POST", body: JSON.stringify({ plan }) }),
@@ -254,14 +236,21 @@ export const api = {
     }),
   tts: (body: { text: string; voice: string }) => request<{ audio: string }>("/tts", { method: "POST", body: JSON.stringify(body) }),
   /** The Landing Signal read: an honest per-concept understanding view.
-   *  ready = practiced concepts whose confirm-check today would promote them
-   *  to landed (their one pass was on an earlier day). Max 3. */
+   *  ready = confirm chips (practiced, one earlier-day pass: a PASS today
+   *  lands it) plus refresh chips (landed, forgetting-curve re-check due).
+   *  Max 3. today = the session memory summary from the honest event log. */
   getComprehension: () =>
     request<{
       enabled: boolean;
-      concepts: { key: string; label: string; chapter: string | null; state: "landed" | "practiced" | "working_on_it"; struggles: number; passes: number; lastSeen: string }[];
+      concepts: {
+        key: string; label: string; chapter: string | null;
+        state: "landed" | "practiced" | "working_on_it";
+        struggles: number; passes: number; lastSeen: string;
+        firstSeen?: string | null; lastPass?: string | null;
+      }[];
       summary: { landed: number; practiced: number; working: number };
-      ready: { key: string; label: string; chapter: string | null }[];
+      ready: { key: string; label: string; chapter: string | null; kind?: "confirm" | "refresh" }[];
+      today?: { learned: { key: string; label: string }[]; fuzzy: { key: string; label: string }[]; touched: number };
     }>("/comprehension"),
   /** Ready to Land: the server poses one fresh transfer check for a practiced
    *  concept and remembers it on the conversation, so the student's next chat

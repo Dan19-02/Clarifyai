@@ -22,7 +22,6 @@ export interface ChatMessage {
   sources?: GroundingSource[];
   attachments?: Attachment[];
   audioBase64?: string; // Cache generated TTS audio
-  isPlayingAudio?: boolean;
   /** Deep-check state for this answer (present only when it was requested):
    *  "checking" = examiner reviewing the streamed draft (transient, client
    *  only); "passed" = the examiner pass ran; "unavailable" = it could not
@@ -115,8 +114,6 @@ export interface StudentProfile {
   grade: string; // 1st - 12th, College, Competitive
   language: string; // English, Hinglish, Hindi
   preferredAnalogy: string; // Daily Life, Sports, Cooking, Bicycles & Trains, Mobile Phones & Tech, Games
-  weakChapters?: string[];
-  strongChapters?: string[];
   confidenceLevel: number; // 1 - 5 stars
   examGoals: string;
 }

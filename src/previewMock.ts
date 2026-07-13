@@ -200,6 +200,7 @@ export function installPreviewMocks(api: typeof ApiShape) {
   api.getComprehension = () => {
     compReads++;
     const promoted = compReads > 2;
+    const dayAgo = new Date(Date.now() - 864e5).toISOString();
     return ok({
       enabled: true,
       concepts: [
@@ -211,11 +212,18 @@ export function installPreviewMocks(api: typeof ApiShape) {
           struggles: 0,
           passes: promoted ? 2 : 1,
           lastSeen: NOW,
+          firstSeen: dayAgo,
+          lastPass: NOW,
         },
-        { key: "friction-basics", label: "Friction", chapter: "Laws of Motion", state: "working_on_it" as const, struggles: 1, passes: 0, lastSeen: NOW },
+        { key: "friction-basics", label: "Friction", chapter: "Laws of Motion", state: "working_on_it" as const, struggles: 1, passes: 0, lastSeen: NOW, firstSeen: dayAgo, lastPass: null },
       ],
       summary: { landed: promoted ? 1 : 0, practiced: promoted ? 0 : 1, working: 1 },
-      ready: promoted ? [] : [{ key: "newtons-second-law", label: "Newton's second law", chapter: "Laws of Motion" }],
+      ready: promoted ? [] : [{ key: "newtons-second-law", label: "Newton's second law", chapter: "Laws of Motion", kind: "confirm" as const }],
+      today: {
+        learned: promoted ? [{ key: "newtons-second-law", label: "Newton's second law" }] : [],
+        fuzzy: [{ key: "friction-basics", label: "Friction" }],
+        touched: 2,
+      },
     });
   };
   api.confirmCheck = () =>
