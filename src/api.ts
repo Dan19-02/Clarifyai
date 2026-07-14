@@ -47,6 +47,8 @@ export function setToken(token: string | null) {
 export interface Account {
   id: number;
   email: string;
+  /** Whether the student has confirmed control of their email inbox. */
+  emailVerified?: boolean;
   profile: StudentProfile;
   chapters: ChapterProgress[];
   subscription?: Subscription;
@@ -181,6 +183,26 @@ export const api = {
   me: () => request<{ user: Account }>("/me"),
   updateMe: (body: StudentProfile & { chapters: ChapterProgress[] }) =>
     request<{ user: Account }>("/me", { method: "PUT", body: JSON.stringify(body) }),
+
+  // Password reset. forgotPassword always resolves the same way (the server is
+  // enumeration-safe), so the UI can advance to the code screen unconditionally.
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  /** Verify the reset code + set a new password; returns a fresh session. */
+  resetPassword: (email: string, code: string, password: string) =>
+    request<{ token: string; user: Account }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, code, password }),
+    }),
+
+  // Email verification (signed-in). send() (re)mails a code; verify() checks it.
+  sendEmailOtp: () =>
+    request<{ ok: boolean; alreadyVerified?: boolean; cooldownSec?: number; retryAfterSec?: number }>(
+      "/auth/verify-email/send",
+      { method: "POST" }
+    ),
+  verifyEmailOtp: (code: string) =>
+    request<{ user: Account }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ code }) }),
 
   // Billing (Razorpay one-time monthly pass)
   getSubscription: () => request<{ subscription: Subscription }>("/subscription"),

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import { ThemeToggle } from "./ThemeToggle";
+import VerifyBanner from "./VerifyBanner";
 import {
   ChatMessage,
   ChapterProgress,
@@ -1520,6 +1521,9 @@ export default function App() {
           </button>
         </div>
       </nav>
+
+      {/* Non-blocking nudge to verify email (only for unverified accounts). */}
+      <VerifyBanner />
 
       {/* Two-panel workspace */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden max-w-[1500px] w-full mx-auto pb-14 lg:pb-0">

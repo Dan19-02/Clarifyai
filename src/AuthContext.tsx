@@ -13,6 +13,9 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
   signup: (input: SignupInput) => Promise<void>;
+  /** Adopt a session returned by a flow that mints its own token+user (the
+   *  password reset auto-signs the student in). Same effect as login. */
+  applySession: (token: string, user: Account) => void;
   logout: () => void;
   setAccount: (a: Account) => void;
   /** Merge a fresh plan/usage snapshot into the signed-in account. */
@@ -64,6 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccount(user);
   };
 
+  const applySession = (token: string, user: Account) => {
+    setToken(token);
+    setAccount(user);
+  };
+
   const logout = () => {
     setToken(null);
     setAccount(null);
@@ -83,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ account, loading, login, loginWithGoogle, signup, logout, setAccount, applySubscription, refreshSubscription }}
+      value={{ account, loading, login, loginWithGoogle, signup, applySession, logout, setAccount, applySubscription, refreshSubscription }}
     >
       {children}
     </AuthContext.Provider>
