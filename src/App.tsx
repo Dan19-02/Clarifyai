@@ -1743,42 +1743,91 @@ export default function App() {
 
           {/* Messages */}
           <div ref={messagesRef} className="flex-1 bg-editorial-ivory border border-editorial-line-light rounded-2xl p-3 md:p-5 overflow-y-auto flex flex-col gap-5 min-h-[280px]">
-            {chatHistory.length === 0 && !isGenerating && (
-              <div className="m-auto w-full max-w-lg rounded-3xl border border-editorial-line bg-editorial-stone/30 px-6 py-8 md:px-9 md:py-10 text-center flex flex-col items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-editorial-sage shrink-0">
-                  <span className="kod-display text-2xl leading-none text-editorial-ivory">C</span>
-                </div>
-                <div>
-                  <h2 className="kod-display text-2xl md:text-[26px] leading-snug text-editorial-charcoal">
-                    What are we working through today{profile.name ? `, ${profile.name.split(" ")[0]}` : ""}?
-                  </h2>
-                  <p className="mt-2.5 text-sm leading-relaxed text-editorial-sage">
-                    Ask it once, ask it ten times. I will explain it a fresh way each time, until it lands.
-                  </p>
-                </div>
-                <div className="w-full mt-2">
-                  <p className="mb-2 text-left kod-display text-sm text-editorial-charcoal/70">Not sure where to start?</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {SUGGESTED_QUERIES.map((q, idx) => (
-                      <button
-                        key={idx}
-                        title={q.hint}
-                        onClick={() => selectSuggestedPrompt(q.prompt)}
-                        className="group flex items-start gap-3 text-left px-4 py-3 rounded-2xl border border-editorial-line bg-surface hover:border-editorial-sage/50 hover:bg-editorial-sage/[0.06] motion-safe:hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-                      >
-                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-editorial-sage/10 text-editorial-sage">
-                          <BookOpen size={15} />
+            {chatHistory.length === 0 && !isGenerating && (() => {
+              // "Today": a quiet progress mirror. Every row below is honest, it
+              // only appears when the signal is real, so a brand-new student
+              // (no streak, no landing, nothing due) sees just the warm prompt
+              // and the starters, and never an empty scoreboard.
+              const streakDays = stats && stats.daysActive > 0 ? stats.daysActive : 0;
+              const streakLit = Boolean(stats?.activeToday);
+              const diyaTip = stats ? diyaTitle(profile.language, stats.daysActive, stats.activeToday) : "";
+              const landedToday = comp.enabled ? comp.today.learned.length : 0;
+              const fuzzyToday = comp.enabled ? comp.today.fuzzy.length : 0;
+              const showToday = comp.enabled && comp.today.touched > 0 && (landedToday > 0 || fuzzyToday > 0);
+              // The one thing worth doing first: the top concept waiting for its
+              // spaced-confirmation check. Free, and it re-uses the same handler
+              // as the Ready-to-Land card so the flow is identical.
+              const readyPick =
+                comp.enabled && !rtlDismissed && rtlState !== "posed" && comp.ready.length > 0 ? comp.ready[0] : null;
+              const firstName = profile.name ? profile.name.split(" ")[0] : "";
+              const hasMirror = streakDays > 0 || showToday || Boolean(readyPick);
+              return (
+                <div className="m-auto w-full max-w-lg px-2 py-6 flex flex-col items-center gap-5 text-center">
+                  {(streakDays > 0 || showToday) && (
+                    <div className="flex w-full items-center justify-center gap-3 flex-wrap">
+                      {streakDays > 0 && (
+                        <span
+                          title={diyaTip}
+                          className="inline-flex items-center gap-1.5 px-2.5 h-8 rounded-full border border-editorial-line text-xs text-editorial-charcoal/80 select-none"
+                        >
+                          <Flame size={13} className={streakLit ? "text-amber-500 fill-amber-400 cfy-diya-lit" : "text-editorial-charcoal/30"} />
+                          <span className="tabular-nums">{streakDays}-day streak</span>
                         </span>
-                        <span className="min-w-0">
-                          <span className="block text-sm font-medium text-editorial-charcoal">{q.label}</span>
-                          <span className="mt-0.5 block text-[11px] leading-relaxed text-editorial-charcoal/60">{q.hint}</span>
+                      )}
+                      {showToday && (
+                        <span className="text-xs text-editorial-charcoal/60 tabular-nums">
+                          {landedToday > 0 && <>{landedToday} landed</>}
+                          {landedToday > 0 && fuzzyToday > 0 && <span className="text-editorial-charcoal/30"> · </span>}
+                          {fuzzyToday > 0 && <>{fuzzyToday} still fuzzy today</>}
                         </span>
-                      </button>
-                    ))}
+                      )}
+                    </div>
+                  )}
+
+                  <div>
+                    <h2 className="kod-display text-2xl md:text-[26px] leading-snug text-editorial-charcoal">
+                      {readyPick
+                        ? `Warm it up${firstName ? `, ${firstName}` : ""}.`
+                        : `What are we working through today${firstName ? `, ${firstName}` : ""}?`}
+                    </h2>
+                    <p className="mt-2.5 text-sm leading-relaxed text-editorial-sage">
+                      {readyPick
+                        ? "One small check settles what was still fuzzy. It costs no credits."
+                        : "Ask it once, ask it ten times. I will explain it a fresh way each time, until it lands."}
+                    </p>
+                  </div>
+
+                  {readyPick && (
+                    <button
+                      onClick={() => handleReadyConfirm(readyPick)}
+                      disabled={rtlState === "loading"}
+                      className="inline-flex items-center gap-2 max-w-full rounded-xl bg-editorial-sage px-4 py-2.5 text-sm font-medium text-editorial-ivory hover:bg-editorial-sage/90 disabled:opacity-60 motion-safe:active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      <Sparkles size={15} className="shrink-0" />
+                      <span className="text-left">{`Land "${readyPick.label}" · 1 min check`}</span>
+                    </button>
+                  )}
+
+                  <div className="w-full mt-1">
+                    <p className="mb-2.5 text-left kod-display text-xs uppercase tracking-wide text-editorial-charcoal/60">
+                      {hasMirror ? "Or start something new" : "Not sure where to start?"}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {SUGGESTED_QUERIES.map((q, idx) => (
+                        <button
+                          key={idx}
+                          title={q.hint}
+                          onClick={() => selectSuggestedPrompt(q.prompt)}
+                          className="rounded-full border border-editorial-line bg-surface px-3.5 py-2 text-sm text-editorial-charcoal hover:border-editorial-sage/50 hover:bg-editorial-sage/[0.06] motion-safe:active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                        >
+                          {q.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {chatHistory.map((message, msgIdx) => (
               <motion.div
