@@ -846,8 +846,12 @@ export default function App() {
     const isFirstMessage = opts?.freshChat === true || chatHistory.length === 0;
     const deep = opts?.deep === true;
 
-    // A new question (first in a thread, not a deep dive) is what costs a credit.
-    // Follow-ups, "still fuzzy" re-explains, and deep dives are always free.
+    // Conservative pre-send gate: block instantly only for the case the client
+    // can be SURE costs a credit, a brand-new thread with no quota left. A NEW
+    // doubt raised mid-thread also costs a credit, but only the server's
+    // classifier can tell it from a free same-doubt follow-up, so those go
+    // through and the server returns the paywall if the student is out (see
+    // handlePaywall). Deep dives and re-explains never cost a credit.
     const isNewQuestion = isFirstMessage && !deep && (Boolean(text) || atts.length > 0);
     if (isNewQuestion && !canAskNew(subscription)) {
       // Release the synchronous send guard before bailing: this early return is
@@ -1073,8 +1077,11 @@ export default function App() {
         });
       }
 
-      // A new question was charged server-side: refresh the usage display.
-      if (isNewQuestion) refreshSubscription().catch(() => {});
+      // The server is the authority on whether this ask cost a credit: a NEW
+      // doubt raised mid-thread is charged there too, and only its classifier
+      // knows. So always pull the true usage, never trust the client's guess,
+      // and the "questions left" pill drops for every distinct topic asked.
+      refreshSubscription().catch(() => {});
     } catch (error: any) {
       // Out of trial / quota on the /chat path: show the plan chooser, not an error.
       if (error instanceof ApiError && error.code === "payment_required") {
