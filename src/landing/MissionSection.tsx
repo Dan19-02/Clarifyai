@@ -7,7 +7,7 @@ import { motion } from "motion/react";
 import { useCalm, fadeUp } from "./reveals";
 
 const PARAGRAPHS: string[] = [
-  "Clarify.AI began with one picture that would not leave us alone: a student at 11 pm, lamp on, book open, one sentence refusing to make sense, and nobody awake to ask. Not a weak student. A normal one, on a normal night, in homes all over India. Everything on this page was built backwards from that hour.",
+  "ClarifyAi began with one picture that would not leave us alone: a student at 11 pm, lamp on, book open, one sentence refusing to make sense, and nobody awake to ask. Not a weak student. A normal one, on a normal night, in homes all over India. Everything on this page was built backwards from that hour.",
   "We hold one conviction above all the others: quality education is a right, not a luxury. So we are building a place where any student in India can ask openly, as many times as it takes, without being judged for asking and without it costing what a coaching class costs. Here, the fifth 'still fuzzy' is received exactly like the first.",
   "A conviction only counts if it survives the price tag. The sheet below is where we keep our word.",
 ];
@@ -19,7 +19,7 @@ export default function MissionSection() {
     <section
       id="mission"
       className="landing-cv landing-cv-mission bg-cobalt px-5 py-20 text-white md:px-8 md:py-28"
-      aria-label="Why Clarify.AI exists"
+      aria-label="Why ClarifyAi exists"
     >
       <div className="mx-auto max-w-3xl">
         <motion.p {...fadeUp(calm)} className="kod-pill inline-block bg-lime text-pill-ink">

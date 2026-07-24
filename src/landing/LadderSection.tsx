@@ -37,7 +37,7 @@ export default function LadderSection() {
   const calm = useCalm();
 
   return (
-    <section id="how" className="landing-cv landing-cv-ladder bg-page px-5 py-16 text-ink md:px-8 md:py-24" aria-label="How Clarify.AI stays until it lands">
+    <section id="how" className="landing-cv landing-cv-ladder bg-page px-5 py-16 text-ink md:px-8 md:py-24" aria-label="How ClarifyAi stays until it lands">
       <div className="mx-auto max-w-6xl">
         <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
           {/* The pitch */}
@@ -49,7 +49,7 @@ export default function LadderSection() {
               It stays until it lands.
             </h2>
             <p className="landing-pretty mt-5 max-w-lg text-[15px] leading-relaxed text-ink-dim md:text-base">
-              Understanding rarely arrives on the first try, and Clarify.AI is
+              Understanding rarely arrives on the first try, and ClarifyAi is
               built around that truth. Under every answer sits one small button:
             </p>
             <span
@@ -78,11 +78,11 @@ export default function LadderSection() {
               </div>
             </motion.div>
             <motion.div {...sheetRise(calm)} className="flex flex-col items-start">
-              <p className="kod-display mb-1.5 text-xs text-ink-dim">Clarify.AI &middot; unedited</p>
+              <p className="kod-display mb-1.5 text-xs text-ink-dim">ClarifyAi &middot; unedited</p>
               <div
                 tabIndex={0}
                 role="region"
-                aria-label="The real re-explanation from Clarify.AI, scrollable"
+                aria-label="The real re-explanation from ClarifyAi, scrollable"
                 className="lit-sheet max-h-[460px] w-full min-w-0 overflow-y-auto rounded-[2px] bg-editorial-ivory p-4 text-sm leading-relaxed text-editorial-charcoal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt-bright md:p-5"
               >
                 <Markdown>{REAL_REEXPLANATION}</Markdown>

@@ -1,5 +1,5 @@
 /**
- * Rich markdown renderer for Clarify.AI teaching responses.
+ * Rich markdown renderer for ClarifyAi teaching responses.
  *
  * The model is prompted to use Markdown tables, LaTeX math, and Mermaid
  * diagrams. The old UI dumped raw text, so equations and diagrams showed as
@@ -125,7 +125,7 @@ function MermaidBlock({ chart }: { chart: string }) {
   return (
     <div
       role="img"
-      aria-label="Concept flowchart drawn by Clarify.AI"
+      aria-label="Concept flowchart drawn by ClarifyAi"
       className="my-3 flex justify-center overflow-x-auto rounded-xl border border-editorial-line-light bg-surface p-3"
       dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
     >

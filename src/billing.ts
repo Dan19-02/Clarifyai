@@ -61,7 +61,7 @@ export async function startCheckout(plan: string, account: Account, cb: Checkout
     order_id: order.orderId,
     amount: order.amount,
     currency: order.currency,
-    name: "Clarify.AI",
+    name: "ClarifyAi",
     description: `${order.planName} plan, 30 days`,
     image: "/favicon.svg",
     prefill: { email: order.prefill.email || account.email, name: order.prefill.name || account.profile.name },

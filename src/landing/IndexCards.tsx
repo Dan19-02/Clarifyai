@@ -76,13 +76,13 @@ export default function IndexCards() {
             </motion.div>
             <motion.div {...sheetRise(calm)} className="flex flex-col items-start">
               <div className="mb-1.5 flex items-center gap-2">
-                <span className="kod-display text-xs text-ink-dim">Clarify.AI &middot; unedited</span>
+                <span className="kod-display text-xs text-ink-dim">ClarifyAi &middot; unedited</span>
                 <span className="kod-pill bg-lime-pale text-pill-ink">Deep-check passed</span>
               </div>
               <div
                 tabIndex={0}
                 role="region"
-                aria-label="A real Hindi answer from Clarify.AI for a class 7 State Board profile, scrollable"
+                aria-label="A real Hindi answer from ClarifyAi for a class 7 State Board profile, scrollable"
                 lang="hi"
                 className="lit-sheet landing-devanagari max-h-[420px] w-full min-w-0 overflow-y-auto rounded-[2px] bg-editorial-ivory p-4 text-sm leading-relaxed text-editorial-charcoal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cobalt-bright md:p-5"
               >

@@ -84,7 +84,7 @@ export function LandingFooter({ onAuth }: LampOffProps) {
             <span className="kod-display text-lg leading-none text-white">C</span>
           </div>
           <div>
-            <p className="kod-display text-lg tracking-tight text-white">Clarify.AI</p>
+            <p className="kod-display text-lg tracking-tight text-white">ClarifyAi</p>
             <p className="text-[13px] text-white/70">A patient teacher for every student in India.</p>
           </div>
         </div>
@@ -101,7 +101,7 @@ export function LandingFooter({ onAuth }: LampOffProps) {
         </nav>
       </div>
       <p className="mx-auto mt-8 max-w-6xl text-[12px] text-white/70">
-        &copy; 2026 Clarify.AI &middot; Questions, payments, anything at all:{" "}
+        &copy; 2026 ClarifyAi &middot; Questions, payments, anything at all:{" "}
         <a href={`mailto:${SUPPORT_EMAIL}`} className="text-white/80 underline underline-offset-2 transition-colors hover:text-white">
           {SUPPORT_EMAIL}
         </a>

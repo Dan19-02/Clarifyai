@@ -292,7 +292,7 @@ export default function PreExamNotebook({ open, onClose, subscription, onUpgrade
                         sheet students fold into a pocket. */}
                     <div className="parchi-print">
                       <p className="hidden print:block mb-2 text-xs font-semibold">
-                        {level.view === "points" ? `${level.subject} · ${level.chapter} · ` : ""}Clarify.AI parchi
+                        {level.view === "points" ? `${level.subject} · ${level.chapter} · ` : ""}ClarifyAi parchi
                       </p>
                       <Markdown>{note.text}</Markdown>
                     </div>

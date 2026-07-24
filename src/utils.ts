@@ -100,7 +100,7 @@ export function dataUrlToBase64(dataUrl: string): string {
 }
 
 /**
- * Text parsing utility that parses Clarify.AI structured responses
+ * Text parsing utility that parses ClarifyAi structured responses
  * into logical blocks for visual notebooks if sections are detected.
  */
 export interface NotebookSection {

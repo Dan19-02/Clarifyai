@@ -31,7 +31,7 @@ export default function RegisterSection() {
   const calm = useCalm();
 
   return (
-    <section className="landing-cv landing-cv-register bg-chip px-5 py-16 text-ink md:px-8 md:py-24" aria-label="How Clarify.AI stays honest">
+    <section className="landing-cv landing-cv-register bg-chip px-5 py-16 text-ink md:px-8 md:py-24" aria-label="How ClarifyAi stays honest">
       <div className="mx-auto max-w-6xl">
         <motion.p {...fadeUp(calm)} className="kod-display text-xl text-ink md:text-2xl">
           <span lang="hi-Latn">par yeh galat hua toh?</span>

@@ -1,5 +1,5 @@
 /**
- * REAL product output, captured verbatim from a live Clarify.AI session.
+ * REAL product output, captured verbatim from a live ClarifyAi session.
  *
  * Captured 2 July 2026 against the running backend (open-source teaching
  * model, standard mode, CBSE profile, Hinglish, Daily Life analogies).
@@ -102,7 +102,7 @@ Force is the rate of change of momentum, and for constant mass, force equals mas
 Take a shot at the Quick Check above, and we will work through it together. Cricket makes physics fun, doesn't it?`;
 
 export const REAL_CAPTURE_NOTE =
-  "Real answer, generated live by Clarify.AI on 2 July 2026. Unedited.";
+  "Real answer, generated live by ClarifyAi on 2 July 2026. Unedited.";
 
 /** The one-tap signal the app sends when a student is still confused. */
 export const REAL_STILL_FUZZY_PROMPT =
@@ -138,7 +138,7 @@ export const REAL_VOICES = [
 
 /**
  * REAL re-explanation, captured from the same live session: the answer
- * Clarify.AI gave after the student tapped "Still fuzzy? Explain differently"
+ * ClarifyAi gave after the student tapped "Still fuzzy? Explain differently"
  * on the Newton's Second Law answer above. Verbatim, unedited.
  */
 export const REAL_REEXPLANATION = `Of course, let's slow down and try a completely different angle. No rush at all.

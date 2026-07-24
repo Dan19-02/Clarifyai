@@ -1254,7 +1254,7 @@ export default function App() {
       setIsLiveActive(true);
 
       ws.onopen = () => {
-        setLiveStatus("Connected. Say hello to Clarify.AI!");
+        setLiveStatus("Connected. Say hello to ClarifyAi!");
         ws.send(JSON.stringify({ type: "start" }));
       };
 
@@ -1262,7 +1262,7 @@ export default function App() {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === "ready") {
-            setLiveStatus("Clarify.AI is listening to your voice!");
+            setLiveStatus("ClarifyAi is listening to your voice!");
           } else if (msg.type === "audio") {
             if (liveInterruptedRef.current) return;
             playLiveAudioChunk(base64ToFloat32PCM(msg.audio));
@@ -1466,7 +1466,7 @@ export default function App() {
           <div className="w-8 h-8 rounded-[2px] bg-editorial-sage flex items-center justify-center shrink-0">
             <span className="kod-display text-lg leading-none" style={{ color: "var(--color-editorial-ivory)" }}>C</span>
           </div>
-          <span className="kod-display hidden sm:inline text-xl tracking-tight text-editorial-charcoal">Clarify.AI</span>
+          <span className="kod-display hidden sm:inline text-xl tracking-tight text-editorial-charcoal">ClarifyAi</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -1838,7 +1838,7 @@ export default function App() {
                 className={`flex flex-col max-w-[92%] md:max-w-[85%] ${message.role === "user" ? "self-end items-end" : "self-start items-start"}`}
               >
                 <div className="flex items-center gap-2 mb-1 text-[10px] text-editorial-charcoal/70">
-                  <span>{message.role === "user" ? "You" : "Clarify.AI"}</span>
+                  <span>{message.role === "user" ? "You" : "ClarifyAi"}</span>
                   <span>·</span>
                   <span>{message.timestamp}</span>
                 </div>
@@ -2144,8 +2144,8 @@ export default function App() {
             />
             <button
               onClick={isLiveActive ? stopLiveSession : startLiveSession}
-              title={isLiveActive ? "Stop the voice session" : "Talk to Clarify.AI with your voice"}
-              aria-label={isLiveActive ? "Stop the voice session" : "Talk to Clarify.AI with your voice"}
+              title={isLiveActive ? "Stop the voice session" : "Talk to ClarifyAi with your voice"}
+              aria-label={isLiveActive ? "Stop the voice session" : "Talk to ClarifyAi with your voice"}
               className={`w-11 h-11 flex items-center justify-center rounded-full transition-colors shrink-0 cursor-pointer motion-safe:active:scale-[0.96] ${
                 isLiveActive
                   ? "bg-editorial-sage text-white hover:bg-editorial-sage/90"

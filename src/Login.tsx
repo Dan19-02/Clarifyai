@@ -150,7 +150,7 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
   const label = "text-[10px] uppercase tracking-[0.1em] font-bold text-editorial-sage";
 
   const heading =
-    mode === "forgot" ? "Reset your password" : mode === "reset" ? "Enter your code" : "Clarify.AI";
+    mode === "forgot" ? "Reset your password" : mode === "reset" ? "Enter your code" : "ClarifyAi";
   const subheading =
     mode === "forgot"
       ? "We'll email you a 6-digit code to reset it."

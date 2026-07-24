@@ -33,7 +33,7 @@ const STAMPS = [
   },
   {
     time: "11:04 pm",
-    line: "You open Clarify.AI. Tonight, the panic never arrives. Tonight you have a catch-net.",
+    line: "You open ClarifyAi. Tonight, the panic never arrives. Tonight you have a catch-net.",
     cobalt: true,
   },
 ];
@@ -141,7 +141,7 @@ export default function HourAct({ onAuth }: HourActProps) {
           <div className="flex h-9 w-9 items-center justify-center rounded-[2px] bg-cobalt">
             <span className="kod-display text-lg leading-none text-white">C</span>
           </div>
-          <span className="kod-display text-lg tracking-tight text-ink">Clarify.AI</span>
+          <span className="kod-display text-lg tracking-tight text-ink">ClarifyAi</span>
         </div>
         <nav className="flex items-center gap-3 md:gap-7" aria-label="Main">
           <a href="#watch" className={navLink}>See a real answer</a>
@@ -251,7 +251,7 @@ export default function HourAct({ onAuth }: HourActProps) {
       </section>
 
       {/* ---- Real numbers ---- */}
-      <section aria-label="Clarify.AI in numbers" className="mx-auto max-w-6xl px-5 pb-20 md:px-8 md:pb-28">
+      <section aria-label="ClarifyAi in numbers" className="mx-auto max-w-6xl px-5 pb-20 md:px-8 md:pb-28">
         <div className="grid gap-10 border-t-2 border-ink-line pt-10 md:grid-cols-3">
           {STATS.map((s, i) => (
             <motion.div key={s.big} {...fadeUp(calm, calm ? 0 : i * 0.08)}>
